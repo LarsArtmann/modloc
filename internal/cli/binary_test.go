@@ -2,6 +2,7 @@ package cli_test
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -12,6 +13,8 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"github.com/larsartmann/modloc/internal/cli"
 )
 
 // built is the binary, compiled once per test process.
@@ -153,6 +156,37 @@ var _ = Describe("the built binary", Serial, func() {
 		Expect(run.stdout).To(Equal(tsv(".", ".\t3\t4\t1\t1\t6", "internal/y\t2\t2\t0\t0\t2")))
 	})
 
+	Describe("the process entry point", func() {
+		It("scans the current directory through the process's stdout and the scc on PATH", func() {
+			enter(tree("stray"))
+
+			code, out := throughProcessStdout(func() int {
+				return cli.Main(context.Background(), nil, "9.9.9", "")
+			})
+
+			Expect(code).To(Equal(0))
+			Expect(out).To(Equal(tsv(".", "OTHER\t1\t3\t0\t0\t3", "sub\t1\t2\t0\t0\t2")))
+		})
+
+		It("prints the version with its commit through the process's stdout", func() {
+			code, out := throughProcessStdout(func() int {
+				return cli.Main(context.Background(), []string{"--version"}, "9.9.9", "feedface")
+			})
+
+			Expect(code).To(Equal(0))
+			Expect(out).To(ContainSubstring("modloc version 9.9.9 (feedface)"))
+		})
+
+		It("returns 2 for a usage error and prints nothing on stdout", func() {
+			code, out := throughProcessStdout(func() int {
+				return cli.Main(context.Background(), []string{"--bogus"}, "9.9.9", "")
+			})
+
+			Expect(code).To(Equal(2))
+			Expect(out).To(BeEmpty())
+		})
+	})
+
 	It("prints nothing but the report on stdout", func() {
 		run := invoke(bin, tree("stray"))
 
@@ -160,6 +194,31 @@ var _ = Describe("the built binary", Serial, func() {
 		Expect(run.stdout).NotTo(ContainSubstring("\x1b["), "a piped report carries no escape codes")
 	})
 })
+
+// throughProcessStdout runs fn with the process's stdout sent to a file and
+// returns modloc's exit code and what it wrote. Main writes to the process's
+// own streams, nothing injected.
+func throughProcessStdout(fn func() int) (int, string) {
+	path := filepath.Join(GinkgoT().TempDir(), "stdout")
+
+	file, err := os.Create(path)
+	Expect(err).NotTo(HaveOccurred())
+
+	previous := os.Stdout
+	os.Stdout = file
+
+	defer func() {
+		os.Stdout = previous
+		_ = file.Close()
+	}()
+
+	code := fn()
+
+	out, err := os.ReadFile(path)
+	Expect(err).NotTo(HaveOccurred())
+
+	return code, string(out)
+}
 
 // goldenText is the bash modloc's output captured in testdata/parity.
 func goldenText(name string) string {

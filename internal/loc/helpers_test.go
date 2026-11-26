@@ -21,11 +21,9 @@ func rustFile(path string, code int) loc.File {
 }
 
 // touched writes an empty file, creating its directories.
-func touched(path string) string {
+func touched(path string) {
 	Expect(os.MkdirAll(filepath.Dir(path), 0o750)).To(Succeed())
 	Expect(os.WriteFile(path, nil, 0o640)).To(Succeed())
-
-	return path
 }
 
 // repository is an empty directory standing in for a repository.
