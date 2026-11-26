@@ -1,0 +1,4 @@
+repo	module	files	code	comment	blank	lines
+.	.	1	3	0	0	3
+.	crates/one	1	2	0	0	2
+.	crates/two	1	1	0	0	1
