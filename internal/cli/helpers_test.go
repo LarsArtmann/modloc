@@ -3,7 +3,10 @@ package cli_test
 import (
 	"bytes"
 	"context"
+	"errors"
+	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -165,6 +168,8 @@ func foundScc(context.Context) (string, string, error) {
 type harness struct {
 	// report is stdout of the scan.
 	report *bytes.Buffer
+	// sink, when set, replaces report as the destination of the scan.
+	sink io.Writer
 	// notices is stderr of the scan.
 	notices *bytes.Buffer
 	// screen is stdout of help and version banners.
@@ -199,8 +204,13 @@ func newHarness() *harness {
 
 // run executes one command line and returns the exit code it maps to.
 func (h *harness) run(args ...string) int {
+	var out io.Writer = h.report
+	if h.sink != nil {
+		out = h.sink
+	}
+
 	env := cli.Environment{
-		Stdout:    h.report,
+		Stdout:    out,
 		Stderr:    h.notices,
 		StdoutTTY: h.terminal,
 		Counter:   h.counter,
@@ -224,4 +234,19 @@ func (h *harness) counts(dir string, files ...loc.File) {
 	}
 
 	h.counter.files[dir] = files
+}
+
+// brokenWriter fails every write.
+type brokenWriter struct{}
+
+// Write fails.
+func (brokenWriter) Write([]byte) (int, error) {
+	return 0, errors.New("disk full")
+}
+
+// realSCC skips when no scc is on PATH, naming the reason.
+func realSCC() {
+	if _, err := exec.LookPath("scc"); err != nil {
+		Skip("VACUOUS: scc is not on PATH, so the real engine cannot be exercised")
+	}
 }

@@ -133,7 +133,9 @@ func Build(env Environment) (*v5.CLI[Config], error) {
 const short = "Count lines of code per logical module instead of per repository."
 
 // long is the root command's description in --help.
-const long = "A logical module is the nearest directory holding go.mod (Go) or Cargo.toml\n" +
+const long = "Count lines of code per logical module instead of per repository.\n" +
+	"\n" +
+	"A logical module is the nearest directory holding go.mod (Go) or Cargo.toml\n" +
 	"(Rust). Every file counts toward the closest module above it, so nested\n" +
 	"modules never add to the module that encloses them. With no <repo>, the\n" +
 	"current directory is scanned."
