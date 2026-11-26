@@ -1,25 +1,29 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
-
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+All notable changes to modloc are documented here. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and versions follow
+Semantic Versioning.
 
 ## [Unreleased]
 
 ### Added
-- Initial project structure
 
-### Changed
-
-### Deprecated
-
-### Removed
-
-### Fixed
-
-### Security
-
-## [0.1.0] - 2026-01-01
-
-### Added
-- Initial release
+- Count lines of code per logical module: every file of the language joins
+  the nearest `go.mod` (Go) or `Cargo.toml` (Rust) above it, and a file
+  outside every module lands on `OTHER`, or on the root module `.` when the
+  root is a module itself. `scc` stays the counting engine, run as a
+  process, so language coverage follows the installed `scc`. The TSV output
+  is byte-identical to the bash `modloc` of the nixos-modules collection on
+  five golden fixtures.
+- The command line on cmdguard v5: typed flags `-l/--language` and
+  `-f/--format`, a help that names every allowed value, `--version`,
+  `doctor`, shell completion and the hidden `describe` contract. Exit
+  codes: `0`, `1` (a path or the count failed) and `2` (the command line is
+  wrong).
+- Output formats: `auto` (the default: `table` on a terminal, `tsv` when
+  piped), `table`, `tsv`, `csv`, `json`, `jsonl` and `markdown`, plus
+  `--color`.
+- A Nix flake: the package wraps `scc` onto its `PATH`;
+  `nixosModules.modloc` and `homeManagerModules.modloc`
+  (`programs.modloc.enable`); eval and runtime checks.
+- 156 behavior specs (Ginkgo) over 94.2 % of the statements.

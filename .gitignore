@@ -65,4 +65,8 @@ workflow-audit-log.*
 *.dll
 *.so
 *.dylib
+
+## Nix
+.envrc
+.direnv/
 # <<< buildflow-managed (.gitignore) <<<
