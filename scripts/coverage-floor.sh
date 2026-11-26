@@ -9,7 +9,7 @@ cd "$(dirname "$0")/.."
 floor="${1:-80}"
 mkdir -p reports
 
-go test -count=1 -coverprofile=reports/coverage.out ./... > /dev/null
+go test -count=1 -coverprofile=reports/coverage.out ./... >/dev/null
 total=$(go tool cover -func=reports/coverage.out | awk '/^total:/ { sub(/%/, "", $3); print $3 }')
 echo "total coverage: ${total}% (floor ${floor}%)"
 

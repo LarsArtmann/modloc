@@ -54,12 +54,7 @@ let
       echo "enabled installs:  ${builtins.toJSON (map toString enabled)}" >&2
       echo "disabled installs: ${builtins.toJSON (map toString disabled)}" >&2
       echo "expected when enabled: ${pkg}" >&2
-      ${
-        if ok then
-          ""
-        else
-          "echo \"modloc module check failed: ${name}\" >&2; exit 1"
-      }
+      ${if ok then "" else "echo \"modloc module check failed: ${name}\" >&2; exit 1"}
       touch $out
     '';
 in
