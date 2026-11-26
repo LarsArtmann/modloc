@@ -1,0 +1,201 @@
+// Package scc counts file lines by running the scc binary.
+//
+// scc is the counting engine: its language table decides what a code, a
+// comment and a blank line is, for every language it knows. modloc runs it
+// once per repository with --by-file --format json and keeps the per-file
+// counts, so language coverage follows the installed scc.
+package scc
+
+import (
+	"bytes"
+	"context"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"strings"
+
+	"github.com/larsartmann/modloc/internal/loc"
+)
+
+// Binary is the executable modloc runs.
+const Binary = "scc"
+
+var (
+	// ErrNotFound reports that no scc executable is on PATH.
+	ErrNotFound = errors.New("scc not found on PATH")
+	// errEmptyOutput reports an scc run that printed nothing.
+	errEmptyOutput = errors.New("no JSON written")
+)
+
+// installHint names the ways to get scc; the Nix package built from this
+// repository already wraps scc, so only other installs need it.
+const installHint = "install scc, for example `go install github.com/boyter/scc/v4@latest` " +
+	"or `brew install scc` (the Nix package from the modloc repository wraps scc already)"
+
+// Counter is a loc.FileCounter backed by the scc binary.
+type Counter struct {
+	// lookPath resolves the scc executable.
+	lookPath func(file string) (string, error)
+	// stderr receives scc's own diagnostics.
+	stderr io.Writer
+}
+
+// New returns a Counter that runs the scc found on PATH and lets scc's
+// diagnostics through to the process's stderr.
+func New() Counter {
+	return Counter{lookPath: exec.LookPath, stderr: os.Stderr}
+}
+
+// CountFiles runs scc in dir and returns the per-file counts, with paths
+// relative to dir. A missing scc, a failing scc and unreadable output are
+// errors; scc's diagnostics pass through in every case.
+func (c Counter) CountFiles(ctx context.Context, dir string) ([]loc.File, error) {
+	bin, err := c.lookup()
+	if err != nil {
+		return nil, err
+	}
+
+	// scc prints one JSON object per file for the directory it is started in.
+	cmd := exec.CommandContext(ctx, bin, "--by-file", "--format", "json", ".") //nolint:gosec // resolved through PATH on purpose: scc is a runtime dependency
+	cmd.Dir = dir
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, fmt.Errorf("pipe %s output: %w", Binary, err)
+	}
+
+	var diagnostics bytes.Buffer
+
+	cmd.Stderr = &diagnostics
+
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("start %s in %s: %w", bin, dir, err)
+	}
+
+	files, decodeErr := decodeFiles(stdout)
+	waitErr := cmd.Wait()
+
+	return c.settle(ctx, dir, files, decodeErr, waitErr, diagnostics.String())
+}
+
+// Probe resolves the scc executable and asks it for its version. It backs the
+// doctor command: the result names what will run, so a wrong scc on PATH is
+// visible.
+func (c Counter) Probe(ctx context.Context) (path string, version string, err error) {
+	path, err = c.lookup()
+	if err != nil {
+		return "", "", err
+	}
+
+	out, err := exec.CommandContext(ctx, path, "--version").Output() //nolint:gosec // see CountFiles
+	if err != nil {
+		return path, "", fmt.Errorf("%s --version failed: %w", path, err)
+	}
+
+	return path, strings.TrimSpace(string(out)), nil
+}
+
+// settle decides the outcome once scc has exited: a killed or failing scc
+// wins over a decode error, and diagnostics reach stderr only on success
+// (they are part of the error message otherwise).
+func (c Counter) settle(
+	ctx context.Context,
+	dir string,
+	files []loc.File,
+	decodeErr, waitErr error,
+	diagnostics string,
+) ([]loc.File, error) {
+	switch {
+	case ctx.Err() != nil:
+		return nil, fmt.Errorf("count %s: %w", dir, ctx.Err())
+	case waitErr != nil:
+		return nil, fmt.Errorf("scc failed in %s: %w%s", dir, waitErr, detail(diagnostics))
+	case decodeErr != nil:
+		return nil, fmt.Errorf("%s output for %s: %w", Binary, dir, decodeErr)
+	}
+
+	c.emit(diagnostics)
+
+	return files, nil
+}
+
+// lookup resolves the scc executable or returns the not-found error with its
+// fix attached.
+func (c Counter) lookup() (string, error) {
+	bin, err := c.lookPath(Binary)
+	if err != nil {
+		return "", fmt.Errorf("%w: %s", ErrNotFound, installHint)
+	}
+
+	return bin, nil
+}
+
+// emit forwards scc's diagnostics, if it wrote any.
+func (c Counter) emit(diagnostics string) {
+	if diagnostics != "" && c.stderr != nil {
+		_, _ = io.WriteString(c.stderr, diagnostics)
+	}
+}
+
+// detail appends scc's last output lines to an error message.
+func detail(diagnostics string) string {
+	const tailLines = 5
+
+	if strings.TrimSpace(diagnostics) == "" {
+		return ""
+	}
+
+	lines := strings.Split(strings.TrimRight(diagnostics, "\n"), "\n")
+	if len(lines) > tailLines {
+		lines = append([]string{"…"}, lines[len(lines)-tailLines:]...)
+	}
+
+	return "\nscc wrote:\n  " + strings.Join(lines, "\n  ")
+}
+
+// fileJob is one entry of scc's --by-file JSON.
+type fileJob struct {
+	Location string `json:"Location"`
+	Lines    int    `json:"Lines"`
+	Code     int    `json:"Code"`
+	Comment  int    `json:"Comment"`
+	Blank    int    `json:"Blank"`
+}
+
+// languageGroup is one element of scc's JSON array: the files of one language.
+type languageGroup struct {
+	Files []fileJob `json:"Files"`
+}
+
+// decodeFiles reads scc's --by-file JSON into loc files.
+func decodeFiles(r io.Reader) ([]loc.File, error) {
+	var groups []languageGroup
+
+	err := json.UnmarshalDecode(jsontext.NewDecoder(r), &groups)
+	if errors.Is(err, io.EOF) {
+		err = errEmptyOutput
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("read %s output: %w", Binary, err)
+	}
+
+	files := make([]loc.File, 0)
+	for _, group := range groups {
+		for _, job := range group.Files {
+			files = append(files, loc.File{
+				Path:    loc.Normalize(job.Location),
+				Lines:   job.Lines,
+				Code:    job.Code,
+				Comment: job.Comment,
+				Blank:   job.Blank,
+			})
+		}
+	}
+
+	return files, nil
+}
