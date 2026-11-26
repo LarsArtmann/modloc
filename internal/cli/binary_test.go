@@ -48,7 +48,9 @@ func binary() string {
 
 		built.path = filepath.Join(dir, "modloc")
 
-		out, err := exec.Command("go", "build", "-o", built.path, "../../cmd/modloc").CombinedOutput() //nolint:gosec // the toolchain is resolved through PATH
+		out, err := exec.Command("go", "build", "-o", built.path, "../../cmd/modloc").
+			CombinedOutput()
+			//nolint:gosec // the toolchain is resolved through PATH
 		if err != nil {
 			built.err = fmt.Errorf("go build: %w\n%s", err, out)
 		}
@@ -119,7 +121,8 @@ var _ = Describe("the built binary", Serial, func() {
 		)
 	})
 
-	DescribeTable("exits the way the contract says",
+	DescribeTable(
+		"exits the way the contract says",
 		func(name string, args []string, code int, stdout, stderr string) {
 			run := invoke(bin, tree(name), args...)
 
@@ -140,8 +143,22 @@ var _ = Describe("the built binary", Serial, func() {
 		Entry("help on stdout", "contract", []string{"--help"}, 0, "USAGE", ""),
 		Entry("version on stdout", "contract", []string{"--version"}, 0, "modloc version", ""),
 		Entry("doctor", "contract", []string{"doctor"}, 0, "scc  ok", ""),
-		Entry("a usage error, with the problem on stderr", "contract", []string{"--bogus"}, 2, "", "unknown flag: --bogus"),
-		Entry("a missing path, named on stderr", "contract", []string{"/no/such/dir"}, 1, "", "No such directory: /no/such/dir"),
+		Entry(
+			"a usage error, with the problem on stderr",
+			"contract",
+			[]string{"--bogus"},
+			2,
+			"",
+			"unknown flag: --bogus",
+		),
+		Entry(
+			"a missing path, named on stderr",
+			"contract",
+			[]string{"/no/such/dir"},
+			1,
+			"",
+			"No such directory: /no/such/dir",
+		),
 		Entry("an empty scan, with the notice on stderr", "stray", []string{"-l", "rust"}, 0,
 			"repo\tmodule\tfiles\tcode\tcomment\tblank\tlines\n", "modloc: no .rs files under '.'"),
 	)
@@ -170,7 +187,11 @@ var _ = Describe("the built binary", Serial, func() {
 
 		It("prints the version with its commit through the process's stdout", func() {
 			code, out := throughProcessStdout(func() int {
-				return cli.Main(context.Background(), []string{"--version"}, cli.Stamp{Version: "9.9.9", Commit: "feedface"})
+				return cli.Main(
+					context.Background(),
+					[]string{"--version"},
+					cli.Stamp{Version: "9.9.9", Commit: "feedface"},
+				)
 			})
 
 			Expect(code).To(Equal(0))

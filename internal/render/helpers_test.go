@@ -36,8 +36,8 @@ func library() loc.Report {
 }
 
 // bare is a report for a repository where the scan matched nothing.
-func bare(repo string) loc.Report {
-	return loc.Report{Repo: repo}
+func bare() loc.Report {
+	return loc.Report{Repo: "empty"}
 }
 
 // written renders the reports in out, without color, and returns the text.

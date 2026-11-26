@@ -39,7 +39,6 @@ type fixtureFile struct {
 // bash modloc was last run on for the parity goldens in testdata/parity: a
 // file changed here without recapturing its golden is a parity failure.
 //
-//nolint:gochecknoglobals // Ginkgo specs read the table at registration time.
 var trees = map[string][]fixtureFile{
 	"contract": {
 		{"go.mod", "module example.com/root\n"},
@@ -99,7 +98,8 @@ func lines(lns ...string) string {
 // tsv is a TSV report: the header, then rows, each behind the label of its
 // repository.
 func tsv(label string, rows ...string) string {
-	out := []string{header}
+	out := make([]string, 0, 1+len(rows))
+	out = append(out, header)
 
 	for _, row := range rows {
 		out = append(out, label+"\t"+row)

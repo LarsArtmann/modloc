@@ -26,10 +26,15 @@ const (
 
 // Columns are the table headers in order; the JSON objects use the same names.
 func Columns() []string {
-	// The fixed-length array makes a mismatch with columnCount a compile error.
-	columns := [columnCount]string{"repo", "module", "files", "code", "comment", "blank", "lines"}
+	columns := headers()
 
 	return slices.Clone(columns[:])
+}
+
+// headers are the table headers as a fixed-length array, so a mismatch with
+// columnCount cannot compile.
+func headers() [columnCount]string {
+	return [columnCount]string{"repo", "module", "files", "code", "comment", "blank", "lines"}
 }
 
 // Write renders the reports in the given output. The rows of every report
@@ -205,7 +210,7 @@ func alignNumbers(cellRows [][]string) [][]string {
 func headerWidths() [columnCount]int {
 	var widths [columnCount]int
 
-	for column, header := range Columns() {
+	for column, header := range headers() {
 		widths[column] = len(header)
 	}
 

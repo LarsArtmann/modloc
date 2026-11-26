@@ -132,7 +132,9 @@ var _ = Describe("modloc", func() {
 				empty := GinkgoT().TempDir()
 
 				Expect(h.run(empty, "-l", "rust")).To(Equal(0))
-				Expect(h.notices.String()).To(Equal("modloc: no .rs files under '" + empty + "'; for go run: modloc -l go '" + empty + "'\n"))
+				Expect(
+					h.notices.String(),
+				).To(Equal("modloc: no .rs files under '" + empty + "'; for go run: modloc -l go '" + empty + "'\n"))
 			})
 		})
 
@@ -150,7 +152,9 @@ var _ = Describe("modloc", func() {
 
 				Expect(h.run(h.root)).To(Equal(0))
 				Expect(h.report.String()).To(Equal(tsv(h.root, goRows...)))
-				Expect(h.notices.String()).To(Equal("modloc: skipped 1 unreadable directory under '" + h.root + "': secret\n"))
+				Expect(
+					h.notices.String(),
+				).To(Equal("modloc: skipped 1 unreadable directory under '" + h.root + "': secret\n"))
 			})
 		})
 
@@ -251,5 +255,4 @@ var _ = Describe("modloc", func() {
 			Expect(h.report.String()).To(ContainSubstring("2 modules"))
 		})
 	})
-
 })

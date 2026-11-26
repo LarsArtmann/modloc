@@ -34,7 +34,7 @@ var _ = Describe("Write", func() {
 		})
 
 		It("prints only the header for a repository without modules", func() {
-			Expect(written([]loc.Report{bare("empty")}, render.OutputTSV)).To(Equal(lines(
+			Expect(written([]loc.Report{bare()}, render.OutputTSV)).To(Equal(lines(
 				"repo\tmodule\tfiles\tcode\tcomment\tblank\tlines",
 			)))
 		})
@@ -89,7 +89,7 @@ var _ = Describe("Write", func() {
 		})
 
 		It("writes an empty array for a repository without modules", func() {
-			Expect(written([]loc.Report{bare("empty")}, render.OutputJSON)).To(Equal("[]\n"))
+			Expect(written([]loc.Report{bare()}, render.OutputJSON)).To(Equal("[]\n"))
 		})
 	})
 
@@ -102,7 +102,7 @@ var _ = Describe("Write", func() {
 		})
 
 		It("writes nothing for a repository without modules", func() {
-			Expect(written([]loc.Report{bare("empty")}, render.OutputJSONL)).To(BeEmpty())
+			Expect(written([]loc.Report{bare()}, render.OutputJSONL)).To(BeEmpty())
 		})
 	})
 
@@ -131,7 +131,7 @@ var _ = Describe("Write", func() {
 		})
 
 		It("writes only the header for a repository without modules, with no TOTAL row", func() {
-			Expect(written([]loc.Report{bare("empty")}, render.OutputMarkdown)).To(Equal(lines(
+			Expect(written([]loc.Report{bare()}, render.OutputMarkdown)).To(Equal(lines(
 				"| repo | module | files | code | comment | blank | lines |",
 				"|-----|-------|------:|-----:|--------:|------:|------:|",
 			)))
@@ -140,14 +140,20 @@ var _ = Describe("Write", func() {
 		It("stays plain Markdown when the output is piped", func() {
 			var buf bytes.Buffer
 
-			Expect(render.Write(&buf, []loc.Report{service()}, render.OutputMarkdown, output.ColorModeAuto)).To(Succeed())
-			Expect(buf.String()).NotTo(ContainSubstring("\x1b["), "auto colors off the terminal would corrupt the Markdown")
+			Expect(
+				render.Write(&buf, []loc.Report{service()}, render.OutputMarkdown, output.ColorModeAuto),
+			).To(Succeed())
+			Expect(
+				buf.String(),
+			).NotTo(ContainSubstring("\x1b["), "auto colors off the terminal would corrupt the Markdown")
 		})
 
 		It("emphasizes its header and TOTAL row when colors are forced", func() {
 			var buf bytes.Buffer
 
-			Expect(render.Write(&buf, []loc.Report{service()}, render.OutputMarkdown, output.ColorModeAlways)).To(Succeed())
+			Expect(
+				render.Write(&buf, []loc.Report{service()}, render.OutputMarkdown, output.ColorModeAlways),
+			).To(Succeed())
 			Expect(buf.String()).To(ContainSubstring("\x1b[1m"))
 		})
 	})
@@ -166,7 +172,7 @@ var _ = Describe("Write", func() {
 		})
 
 		It("draws only the header for a repository without modules", func() {
-			Expect(block(written([]loc.Report{bare("empty")}, render.OutputTable))).To(Equal(rowBlock(
+			Expect(block(written([]loc.Report{bare()}, render.OutputTable))).To(Equal(rowBlock(
 				"╭──────┬────────┬───────┬──────┬─────────┬───────┬───────╮",
 				"│ repo │ module │ files │ code │ comment │ blank │ lines │",
 				"├──────┼────────┼───────┼──────┼─────────┼───────┼───────┤",
@@ -181,7 +187,9 @@ var _ = Describe("Write", func() {
 		It("is styled when colors are forced", func() {
 			var buf bytes.Buffer
 
-			Expect(render.Write(&buf, []loc.Report{service()}, render.OutputTable, output.ColorModeAlways)).To(Succeed())
+			Expect(
+				render.Write(&buf, []loc.Report{service()}, render.OutputTable, output.ColorModeAlways),
+			).To(Succeed())
 			Expect(buf.String()).To(ContainSubstring("\x1b["))
 		})
 	})
