@@ -154,7 +154,7 @@ var _ = Describe("Write", func() {
 
 	Describe("table", func() {
 		It("draws a bordered table with right-aligned numbers and a TOTAL footer", func() {
-			Expect(written([]loc.Report{service()}, render.OutputTable)).To(Equal(lines(
+			Expect(block(written([]loc.Report{service()}, render.OutputTable))).To(Equal(rowBlock(
 				"╭───────┬──────────────┬───────┬───────┬─────────┬───────┬───────╮",
 				"│ repo  │ module       │ files │ code  │ comment │ blank │ lines │",
 				"├───────┼──────────────┼───────┼───────┼─────────┼───────┼───────┤",
@@ -166,7 +166,7 @@ var _ = Describe("Write", func() {
 		})
 
 		It("draws only the header for a repository without modules", func() {
-			Expect(written([]loc.Report{bare("empty")}, render.OutputTable)).To(Equal(lines(
+			Expect(block(written([]loc.Report{bare("empty")}, render.OutputTable))).To(Equal(rowBlock(
 				"╭──────┬────────┬───────┬──────┬─────────┬───────┬───────╮",
 				"│ repo │ module │ files │ code │ comment │ blank │ lines │",
 				"╰──────┴────────┴───────┴──────┴─────────┴───────┴───────╯",

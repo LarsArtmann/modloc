@@ -55,6 +55,18 @@ func lines(lns ...string) string {
 	return strings.Join(lns, "\n") + "\n"
 }
 
+// block splits an output into its lines, the last of which is empty after
+// the final newline.
+func block(out string) []string {
+	return strings.Split(out, "\n")
+}
+
+// rowBlock is the line-split form of lines: what block returns for that
+// output. Comparing a table line by line names the line that differs.
+func rowBlock(lns ...string) []string {
+	return append(lns, "")
+}
+
 // errBroken is what a broken destination reports.
 var errBroken = errors.New("broken pipe")
 
