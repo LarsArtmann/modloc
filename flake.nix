@@ -1,0 +1,140 @@
+{
+  description = "modloc — lines of code per logical module (nearest go.mod or Cargo.toml), not per repository";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+
+    flake-parts = {
+      url = "github:hercules-ci/flake-parts";
+      inputs.nixpkgs-lib.follows = "nixpkgs";
+    };
+
+    go-nix-helpers = {
+      url = "github:LarsArtmann/go-nix-helpers";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+  };
+
+  outputs =
+    inputs@{
+      self,
+      flake-parts,
+      nixpkgs,
+      ...
+    }:
+    let
+      lib = nixpkgs.lib;
+      packageSrc = lib.fileset.toSource {
+        root = ./.;
+        fileset = lib.fileset.gitTracked ./.;
+      };
+      systems = [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
+      # What --version prints. A flake sees no tags, so a clean checkout is
+      # named by its short commit; a working tree is "dev" plus that commit.
+      version = self.shortRev or "dev";
+      commit = self.dirtyShortRev or "";
+      moduleChecks =
+        system:
+        import ./tests/modules.nix {
+          inherit system;
+          inherit (inputs) nixpkgs;
+          flake = self;
+        };
+    in
+    flake-parts.lib.mkFlake { inherit inputs; } {
+      imports = [ inputs.go-nix-helpers.flakeModules.go-standard ];
+
+      go-standard = {
+        pname = "modloc";
+        description = "Lines of code per logical module (nearest go.mod or Cargo.toml), not per repository";
+        goPkgAttr = "go_1_27";
+        inherit systems;
+        src = packageSrc;
+        subPackages = [ "cmd/modloc" ];
+        vendorHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+        enableCompletions = true;
+        completionStyle = "subcommand";
+        lintAsCheck = true;
+        ldflags = [
+          "-s"
+          "-w"
+          "-X main.version=${version}"
+          "-X main.commit=${commit}"
+        ];
+        # modloc counts through the scc binary. The wrapper puts that scc
+        # on the program's PATH, so the package works on any machine; the
+        # check phase gets the same scc for the specs that run the real one.
+        extraBuildAttrs = pkgs: {
+          nativeBuildInputs = [ pkgs.makeWrapper ];
+          checkInputs = [ pkgs.scc ];
+          postInstall = ''
+            wrapProgram $out/bin/modloc --prefix PATH : ${lib.makeBinPath [ pkgs.scc ]}
+          '';
+        };
+      };
+
+      flake = {
+        # programs.modloc: the same option path the bash modloc of the
+        # nixos-modules collection declared, so a consumer switches with the
+        # import alone. The package defaults to this flake's own build.
+        nixosModules.modloc = {
+          imports = [ ./deploy/nixos/modloc.nix ];
+          _module.args.modlocFlake = self;
+        };
+
+        homeManagerModules.modloc = {
+          imports = [ ./deploy/home-manager/modloc.nix ];
+          _module.args.modlocFlake = self;
+        };
+
+        checks = builtins.listToAttrs (
+          map (system: {
+            name = system;
+            value = moduleChecks system;
+          }) systems
+        );
+      };
+
+      perSystem =
+        { self', ... }:
+        {
+          # Runs the package the way a host does. This derivation has no scc,
+          # so counting works only through the wrapper the package carries.
+          checks.package-runtime = nixpkgs.legacyPackages.${system}.runCommand "modloc-package-runtime" { } ''
+            fixture=$PWD/repo
+            mkdir -p $fixture/internal/x $fixture/internal/y/deep
+            printf '%s\n' 'module example.com/root' > $fixture/go.mod
+            printf '%s\n' 'package main' > $fixture/main.go
+            printf '%s\n' 'package x' 'func X() {}' > $fixture/internal/x/x.go
+            printf '%s\n' 'module example.com/root/y' > $fixture/internal/y/go.mod
+            printf '%s\n' 'package y' > $fixture/internal/y/y.go
+            printf '%s\n' 'package d' > $fixture/internal/y/deep/d.go
+
+            modloc=${self'.packages.default}/bin/modloc
+
+            # An empty environment: whatever modloc needs must be its own.
+            env -i $modloc repo > go.tsv
+            printf 'repo\tmodule\tfiles\tcode\tcomment\tblank\tlines\n' > expected
+            printf 'repo\t.\t2\t3\t0\t0\t3\nrepo\tinternal/y\t2\t2\t0\t0\t2\n' >> expected
+            diff -u expected go.tsv
+
+            env -i $modloc doctor | grep -F 'scc  ok'
+            env -i $modloc --version | grep -F 'modloc version'
+            env -i $modloc --bogus 2> usage.err || test "$?" = 2
+            grep -F 'unknown flag: --bogus' usage.err
+
+            for completion in bash-completion/completions/modloc fish/vendor_completions.d/modloc.fish zsh/site-functions/_modloc; do
+              test -f "${self'.packages.default}/share/$completion" || {
+                echo "modloc package check: missing completion $completion" >&2
+                exit 1
+              }
+            done
+
+            touch $out
+          '';
+        };
+    };
+}
