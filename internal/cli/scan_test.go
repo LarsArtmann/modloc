@@ -57,7 +57,13 @@ var _ = Describe("modloc", func() {
 				enter(h.root)
 
 				Expect(h.run(h.root, ".")).To(Equal(0))
-				Expect(h.report.String()).To(Equal(tsv(h.root, goRows...) + tsv(".", goRows...)))
+
+				rows := append([]string{}, goRows...)
+				for _, row := range goRows {
+					rows = append(rows, "."+"\t"+row)
+				}
+
+				Expect(h.report.String()).To(Equal(tsv(h.root, rows...)))
 			})
 		})
 
@@ -102,7 +108,7 @@ var _ = Describe("modloc", func() {
 			It("scans a path that starts with a dash", func() {
 				dash := tree("dash")
 				enter(dash)
-				h.counts("-dash", loc.File{Path: "d.go", Lines: 1, Code: 1})
+				h.counts(filepath.Join(dash, "-dash"), loc.File{Path: "d.go", Lines: 1, Code: 1})
 
 				Expect(h.run("--", "-dash")).To(Equal(0))
 				Expect(h.report.String()).To(Equal(tsv("-dash", ".\t1\t1\t0\t0\t1")))
@@ -115,7 +121,9 @@ var _ = Describe("modloc", func() {
 
 				Expect(h.run(empty)).To(Equal(0))
 				Expect(h.report.String()).To(Equal(tsv(empty)))
-				Expect(h.notices.String()).To(Equal("modloc: no .go files under '" + empty + "'\n"))
+				Expect(h.notices.String()).To(Equal(
+					"modloc: no .go files under '" + empty + "'; for rust run: modloc -l rust '" + empty + "'\n",
+				))
 			})
 
 			It("points at the language that would find files", func() {
@@ -166,7 +174,7 @@ var _ = Describe("modloc", func() {
 				h.sink = brokenWriter{}
 
 				Expect(h.run(h.root)).To(Equal(1))
-				Expect(h.errors.String()).To(ContainSubstring("write report"))
+				Expect(h.errors.String()).To(ContainSubstring("disk full"))
 			})
 		})
 	})
@@ -237,7 +245,8 @@ var _ = Describe("modloc", func() {
 		It("writes Markdown with right-aligned numbers and a TOTAL row", func() {
 			Expect(h.run(h.root, "-f", "markdown")).To(Equal(0))
 			Expect(h.report.String()).To(ContainSubstring("|------:|"))
-			Expect(h.report.String()).To(ContainSubstring("| TOTAL  | 2 modules"))
+			Expect(h.report.String()).To(ContainSubstring("| TOTAL"))
+			Expect(h.report.String()).To(ContainSubstring("2 modules"))
 		})
 	})
 

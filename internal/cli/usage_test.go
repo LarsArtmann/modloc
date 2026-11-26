@@ -91,8 +91,8 @@ var _ = Describe("modloc", func() {
 		})
 
 		It("names the commit it was built from", func() {
-			Expect(h.run("version")).To(Equal(0))
-			Expect(h.screen.String()).To(ContainSubstring("abc1234"))
+			Expect(h.run("--version")).To(Equal(0))
+			Expect(h.screen.String()).To(ContainSubstring("modloc version 1.2.3 (abc1234)"))
 		})
 	})
 })

@@ -82,7 +82,6 @@ var _ = Describe("the command contract", func() {
 			"--color":    output.ColorModeAuto.String(),
 			"--help":     "false",
 			"--no-color": "false",
-			"--version":  "false",
 		}))
 	})
 })

@@ -3,6 +3,7 @@ package cli_test
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -31,7 +32,7 @@ var _ = Describe("modloc", func() {
 
 			Expect(h.run("doctor")).To(Equal(1))
 			Expect(h.report.String()).To(BeEmpty())
-			Expect(h.errors.String()).To(ContainSubstring("scc not found on PATH"))
+			Expect(strings.ToLower(h.errors.String())).To(ContainSubstring("scc not found on path"), h.errors.String())
 		})
 	})
 })

@@ -159,13 +159,20 @@ func wireRoot(cli *v5.CLI[Config], env Environment) {
 	root.SetFlagErrorFunc(func(_ *cobra.Command, err error) error {
 		return fmt.Errorf("%w: %w", errFlagUsage, err)
 	})
+	// The root is wired past cmdguard's command registration, so its
+	// middleware chain does not reach it: the recovery middleware is applied
+	// here by hand, the same one the registered commands get.
 	root.RunE = func(cmd *cobra.Command, args []string) error {
 		cfg, ok := v5.ConfigFromContext[Config](cmd.Context())
 		if !ok {
 			return errNoConfig
 		}
 
-		return scan(cmd.Context(), cfg, args, env)
+		recoverPanics := v5.RecoveryMiddleware[Config]()
+
+		return recoverPanics(cmd.Context(), cfg, v5.CommandMetadata{Name: Name, FullPath: Name}, func() error {
+			return scan(cmd.Context(), cfg, args, env)
+		})
 	}
 }
 
