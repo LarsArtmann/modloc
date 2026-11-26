@@ -12,96 +12,97 @@ import (
 )
 
 var _ = Describe("modloc", func() {
-	var h *harness
+	var modloc *harness
 
 	BeforeEach(func() {
-		h = newHarness()
+		modloc = newHarness()
 	})
 
 	Describe("the scan", func() {
 		Context("given a repository path", func() {
 			It("prints one TSV row per logical module, largest first", func() {
-				Expect(h.run(h.root)).To(Equal(0))
-				Expect(h.report.String()).To(Equal(tsv(h.root, goRows...)))
-				Expect(h.notices.String()).To(BeEmpty())
+				Expect(modloc.run(modloc.root)).To(Equal(0))
+				Expect(modloc.report.String()).To(Equal(tsv(modloc.root, goRows...)))
+				Expect(modloc.notices.String()).To(BeEmpty())
 			})
 
 			It("labels the rows with the path exactly as it was given", func() {
-				enter(filepath.Dir(h.root))
+				enter(filepath.Dir(modloc.root))
 
-				Expect(h.run("./" + filepath.Base(h.root))).To(Equal(0))
-				Expect(h.report.String()).To(Equal(tsv("./"+filepath.Base(h.root), goRows...)))
+				Expect(modloc.run("./" + filepath.Base(modloc.root))).To(Equal(0))
+				Expect(modloc.report.String()).To(Equal(tsv("./"+filepath.Base(modloc.root), goRows...)))
 			})
 
 			It("accepts a path with spaces", func() {
 				spaced := filepath.Join(GinkgoT().TempDir(), "my repo")
 				write(filepath.Join(spaced, "go.mod"), "module example.com/spaced\n")
-				h.counts(spaced, loc.File{Path: "a.go", Lines: 1, Code: 1})
+				modloc.counts(spaced, loc.File{Path: "a.go", Lines: 1, Code: 1})
 
-				Expect(h.run(spaced)).To(Equal(0))
-				Expect(h.report.String()).To(Equal(tsv(spaced, ".\t1\t1\t0\t0\t1")))
+				Expect(modloc.run(spaced)).To(Equal(0))
+				Expect(modloc.report.String()).To(Equal(tsv(spaced, ".\t1\t1\t0\t0\t1")))
 			})
 		})
 
 		Context("given no path", func() {
 			It("scans the current directory and labels its rows with a dot", func() {
-				enter(h.root)
+				enter(modloc.root)
 
-				Expect(h.run()).To(Equal(0))
-				Expect(h.report.String()).To(Equal(tsv(".", goRows...)))
+				Expect(modloc.run()).To(Equal(0))
+				Expect(modloc.report.String()).To(Equal(tsv(".", goRows...)))
 			})
 		})
 
 		Context("given several paths", func() {
 			It("prints every repository's rows, one after the other", func() {
-				enter(h.root)
+				enter(modloc.root)
 
-				Expect(h.run(h.root, ".")).To(Equal(0))
+				Expect(modloc.run(modloc.root, ".")).To(Equal(0))
 
-				out := []string{header}
-				for _, repo := range []string{h.root, "."} {
+				out := make([]string, 0, 1+len(goRows)*2)
+				out = append(out, header)
+				for _, repo := range []string{modloc.root, "."} {
 					for _, row := range goRows {
 						out = append(out, repo+"\t"+row)
 					}
 				}
 
-				Expect(h.report.String()).To(Equal(lines(out...)))
+				Expect(modloc.report.String()).To(Equal(lines(out...)))
 			})
 		})
 
 		Context("given a path that is no directory", func() {
 			It("exits 1, prints no table, and names the missing path", func() {
-				Expect(h.run(h.root, "/no/such/dir")).To(Equal(1))
-				Expect(h.report.String()).To(BeEmpty())
-				Expect(h.errors.String()).To(ContainSubstring("No such directory: /no/such/dir"))
+				Expect(modloc.run(modloc.root, "/no/such/dir")).To(Equal(1))
+				Expect(modloc.report.String()).To(BeEmpty())
+				Expect(modloc.errors.String()).To(ContainSubstring("No such directory: /no/such/dir"))
 			})
 
 			It("names a file that was given as a path", func() {
-				file := filepath.Join(h.root, "main.go")
+				file := filepath.Join(modloc.root, "main.go")
 
-				Expect(h.run(file)).To(Equal(1))
-				Expect(h.report.String()).To(BeEmpty())
-				Expect(h.errors.String()).To(ContainSubstring("Not a directory: " + file))
+				Expect(modloc.run(file)).To(Equal(1))
+				Expect(modloc.report.String()).To(BeEmpty())
+				Expect(modloc.errors.String()).To(ContainSubstring("Not a directory: " + file))
 			})
 
 			It("checks every path before it scans any of them", func() {
-				Expect(h.run(h.root, "/no/such/dir")).To(Equal(1))
-				Expect(h.counter.asked).To(BeEmpty())
+				Expect(modloc.run(modloc.root, "/no/such/dir")).To(Equal(1))
+				Expect(modloc.counter.asked).To(BeEmpty())
 			})
 		})
 
 		Context("given options after the path", func() {
 			It("accepts -l after the path", func() {
-				Expect(h.run(h.root, "-l", "rust")).To(Equal(0))
-				Expect(h.report.String()).To(Equal(tsv(h.root, rustRows...)))
+				Expect(modloc.run(modloc.root, "-l", "rust")).To(Equal(0))
+				Expect(modloc.report.String()).To(Equal(tsv(modloc.root, rustRows...)))
 			})
 
 			It("accepts --format after the path", func() {
-				Expect(h.run(h.root, "--format", "csv")).To(Equal(0))
-				Expect(h.report.String()).To(Equal(lines(
+				Expect(modloc.run(modloc.root, "--format", "csv")).To(Equal(0))
+				Expect(modloc.report.String()).To(Equal(lines(
 					"repo,module,files,code,comment,blank,lines",
-					h.root+",.,2,3,0,0,3",
-					h.root+",internal/y,2,2,0,0,2",
+					modloc.root+",.,2,3,0,0,3",
+					modloc.root+",internal/y,2,2,0,0,2",
 				)))
 			})
 		})
@@ -110,10 +111,10 @@ var _ = Describe("modloc", func() {
 			It("scans a path that starts with a dash", func() {
 				dash := tree("dash")
 				enter(dash)
-				h.counts(filepath.Join(dash, "-dash"), loc.File{Path: "d.go", Lines: 1, Code: 1})
+				modloc.counts(filepath.Join(dash, "-dash"), loc.File{Path: "d.go", Lines: 1, Code: 1})
 
-				Expect(h.run("--", "-dash")).To(Equal(0))
-				Expect(h.report.String()).To(Equal(tsv("-dash", ".\t1\t1\t0\t0\t1")))
+				Expect(modloc.run("--", "-dash")).To(Equal(0))
+				Expect(modloc.report.String()).To(Equal(tsv("-dash", ".\t1\t1\t0\t0\t1")))
 			})
 		})
 
@@ -121,9 +122,9 @@ var _ = Describe("modloc", func() {
 			It("exits 0, prints only the header, and says so on stderr", func() {
 				empty := GinkgoT().TempDir()
 
-				Expect(h.run(empty)).To(Equal(0))
-				Expect(h.report.String()).To(Equal(tsv(empty)))
-				Expect(h.notices.String()).To(Equal(
+				Expect(modloc.run(empty)).To(Equal(0))
+				Expect(modloc.report.String()).To(Equal(tsv(empty)))
+				Expect(modloc.notices.String()).To(Equal(
 					"modloc: no .go files under '" + empty + "'; for rust run: modloc -l rust '" + empty + "'\n",
 				))
 			})
@@ -131,16 +132,16 @@ var _ = Describe("modloc", func() {
 			It("points at the language that would find files", func() {
 				empty := GinkgoT().TempDir()
 
-				Expect(h.run(empty, "-l", "rust")).To(Equal(0))
+				Expect(modloc.run(empty, "-l", "rust")).To(Equal(0))
 				Expect(
-					h.notices.String(),
+					modloc.notices.String(),
 				).To(Equal("modloc: no .rs files under '" + empty + "'; for go run: modloc -l go '" + empty + "'\n"))
 			})
 		})
 
 		Context("when a directory cannot be read", func() {
 			It("says which directory it skipped and counts the rest", func() {
-				secret := filepath.Join(h.root, "secret")
+				secret := filepath.Join(modloc.root, "secret")
 				write(filepath.Join(secret, "go.mod"), "module example.com/root/secret\n")
 
 				Expect(os.Chmod(secret, 0o000)).To(Succeed())
@@ -150,70 +151,70 @@ var _ = Describe("modloc", func() {
 					Skip("VACUOUS: this process reads a mode-000 directory (running as root)")
 				}
 
-				Expect(h.run(h.root)).To(Equal(0))
-				Expect(h.report.String()).To(Equal(tsv(h.root, goRows...)))
+				Expect(modloc.run(modloc.root)).To(Equal(0))
+				Expect(modloc.report.String()).To(Equal(tsv(modloc.root, goRows...)))
 				Expect(
-					h.notices.String(),
-				).To(Equal("modloc: skipped 1 unreadable directory under '" + h.root + "': secret\n"))
+					modloc.notices.String(),
+				).To(Equal("modloc: skipped 1 unreadable directory under '" + modloc.root + "': secret\n"))
 			})
 		})
 
 		Context("when the counter fails", func() {
 			It("exits 1, prints no table, and reports the failure", func() {
-				h.counter.err = errors.New("scc exploded")
+				modloc.counter.err = errors.New("scc exploded")
 
-				Expect(h.run(h.root)).To(Equal(1))
-				Expect(h.report.String()).To(BeEmpty())
-				Expect(h.errors.String()).To(ContainSubstring("scc exploded"))
+				Expect(modloc.run(modloc.root)).To(Equal(1))
+				Expect(modloc.report.String()).To(BeEmpty())
+				Expect(modloc.errors.String()).To(ContainSubstring("scc exploded"))
 			})
 
 			It("reports a crash in the counter as a failure, not as a panic", func() {
-				h.counter.panics = true
+				modloc.counter.panics = true
 
-				Expect(h.run(h.root)).To(Equal(1))
-				Expect(h.report.String()).To(BeEmpty())
+				Expect(modloc.run(modloc.root)).To(Equal(1))
+				Expect(modloc.report.String()).To(BeEmpty())
 			})
 		})
 
 		Context("when the report cannot be written", func() {
 			It("exits 1 and reports the failed write", func() {
-				h.sink = brokenWriter{}
+				modloc.sink = brokenWriter{}
 
-				Expect(h.run(h.root)).To(Equal(1))
-				Expect(h.errors.String()).To(ContainSubstring("disk full"))
+				Expect(modloc.run(modloc.root)).To(Equal(1))
+				Expect(modloc.errors.String()).To(ContainSubstring("disk full"))
 			})
 		})
 	})
 
 	Describe("--format", func() {
 		It("defaults to TSV when stdout is piped", func() {
-			Expect(h.run(h.root)).To(Equal(0))
-			Expect(h.report.String()).To(Equal(tsv(h.root, goRows...)))
+			Expect(modloc.run(modloc.root)).To(Equal(0))
+			Expect(modloc.report.String()).To(Equal(tsv(modloc.root, goRows...)))
 		})
 
 		It("defaults to the bordered table when stdout is a terminal", func() {
-			h.terminal = true
+			modloc.terminal = true
 
-			Expect(h.run(h.root)).To(Equal(0))
-			Expect(h.report.String()).To(ContainSubstring("╭"))
-			Expect(h.report.String()).To(ContainSubstring("TOTAL"))
+			Expect(modloc.run(modloc.root)).To(Equal(0))
+			Expect(modloc.report.String()).To(ContainSubstring("╭"))
+			Expect(modloc.report.String()).To(ContainSubstring("TOTAL"))
 		})
 
 		It("writes csv", func() {
-			Expect(h.run(h.root, "-f", "csv")).To(Equal(0))
-			Expect(h.report.String()).To(Equal(lines(
+			Expect(modloc.run(modloc.root, "-f", "csv")).To(Equal(0))
+			Expect(modloc.report.String()).To(Equal(lines(
 				"repo,module,files,code,comment,blank,lines",
-				h.root+",.,2,3,0,0,3",
-				h.root+",internal/y,2,2,0,0,2",
+				modloc.root+",.,2,3,0,0,3",
+				modloc.root+",internal/y,2,2,0,0,2",
 			)))
 		})
 
 		It("writes json", func() {
-			Expect(h.run(h.root, "-f", "json")).To(Equal(0))
-			Expect(h.report.String()).To(Equal(lines(
+			Expect(modloc.run(modloc.root, "-f", "json")).To(Equal(0))
+			Expect(modloc.report.String()).To(Equal(lines(
 				"[",
 				"  {",
-				`    "repo": "`+h.root+`",`,
+				`    "repo": "`+modloc.root+`",`,
 				`    "module": ".",`,
 				`    "files": 2,`,
 				`    "code": 3,`,
@@ -222,7 +223,7 @@ var _ = Describe("modloc", func() {
 				`    "lines": 3`,
 				"  },",
 				"  {",
-				`    "repo": "`+h.root+`",`,
+				`    "repo": "`+modloc.root+`",`,
 				`    "module": "internal/y",`,
 				`    "files": 2,`,
 				`    "code": 2,`,
@@ -235,24 +236,24 @@ var _ = Describe("modloc", func() {
 		})
 
 		It("writes jsonl", func() {
-			Expect(h.run(h.root, "-f", "jsonl")).To(Equal(0))
-			Expect(h.report.String()).To(Equal(lines(
-				`{"repo":"`+h.root+`","module":".","files":2,"code":3,"comment":0,"blank":0,"lines":3}`,
-				`{"repo":"`+h.root+`","module":"internal/y","files":2,"code":2,"comment":0,"blank":0,"lines":2}`,
+			Expect(modloc.run(modloc.root, "-f", "jsonl")).To(Equal(0))
+			Expect(modloc.report.String()).To(Equal(lines(
+				`{"repo":"`+modloc.root+`","module":".","files":2,"code":3,"comment":0,"blank":0,"lines":3}`,
+				`{"repo":"`+modloc.root+`","module":"internal/y","files":2,"code":2,"comment":0,"blank":0,"lines":2}`,
 			)))
 		})
 
 		It("writes a table with a TOTAL row", func() {
-			Expect(h.run(h.root, "-f", "table")).To(Equal(0))
-			Expect(h.report.String()).To(ContainSubstring("TOTAL"))
-			Expect(h.report.String()).To(ContainSubstring("2 modules"))
+			Expect(modloc.run(modloc.root, "-f", "table")).To(Equal(0))
+			Expect(modloc.report.String()).To(ContainSubstring("TOTAL"))
+			Expect(modloc.report.String()).To(ContainSubstring("2 modules"))
 		})
 
 		It("writes Markdown with right-aligned numbers and a TOTAL row", func() {
-			Expect(h.run(h.root, "-f", "markdown")).To(Equal(0))
-			Expect(h.report.String()).To(ContainSubstring("|------:|"))
-			Expect(h.report.String()).To(ContainSubstring("| TOTAL"))
-			Expect(h.report.String()).To(ContainSubstring("2 modules"))
+			Expect(modloc.run(modloc.root, "-f", "markdown")).To(Equal(0))
+			Expect(modloc.report.String()).To(ContainSubstring("|------:|"))
+			Expect(modloc.report.String()).To(ContainSubstring("| TOTAL"))
+			Expect(modloc.report.String()).To(ContainSubstring("2 modules"))
 		})
 	})
 })

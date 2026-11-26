@@ -18,10 +18,8 @@ import (
 )
 
 // built is the binary, compiled once per test process.
-//
-//nolint:gochecknoglobals // compiled once per test process.
 var built struct {
-	sync.Once
+	once sync.Once
 	path string
 	err  error
 }
@@ -38,7 +36,7 @@ func cleanupBinary() {
 // binary compiles cmd/modloc and returns the executable. Building needs the
 // Go toolchain, which a deployed host does not have; callers skip first.
 func binary() string {
-	built.Do(func() {
+	built.once.Do(func() {
 		dir, err := os.MkdirTemp("", "modloc-binary-")
 		if err != nil {
 			built.err = err
@@ -48,9 +46,10 @@ func binary() string {
 
 		built.path = filepath.Join(dir, "modloc")
 
-		out, err := exec.Command("go", "build", "-o", built.path, "../../cmd/modloc").
-			CombinedOutput()
-			//nolint:gosec // the toolchain is resolved through PATH
+		//nolint:gosec // the toolchain is resolved through PATH
+		build := exec.CommandContext(GinkgoT().Context(), "go", "build", "-o", built.path, "../../cmd/modloc")
+
+		out, err := build.CombinedOutput()
 		if err != nil {
 			built.err = fmt.Errorf("go build: %w\n%s", err, out)
 		}
@@ -70,7 +69,8 @@ type invocation struct {
 
 // invoke runs the binary in dir and returns its exit code and streams.
 func invoke(bin string, dir string, args ...string) invocation {
-	cmd := exec.Command(bin, args...) //nolint:gosec // the freshly built binary
+	//nolint:gosec // the freshly built binary
+	cmd := exec.CommandContext(context.Background(), bin, args...)
 	cmd.Dir = dir
 
 	var stdout, stderr bytes.Buffer

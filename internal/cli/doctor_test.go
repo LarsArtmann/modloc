@@ -12,27 +12,27 @@ import (
 )
 
 var _ = Describe("modloc", func() {
-	var h *harness
+	var modloc *harness
 
 	BeforeEach(func() {
-		h = newHarness()
+		modloc = newHarness()
 	})
 
 	Describe("doctor", func() {
 		It("names the scc binary and its version", func() {
-			Expect(h.run("doctor")).To(Equal(0))
-			Expect(h.report.String()).To(Equal("scc  ok  /usr/bin/scc (scc version 4.1.0)\n"))
-			Expect(h.errors.String()).To(BeEmpty())
+			Expect(modloc.run("doctor")).To(Equal(0))
+			Expect(modloc.report.String()).To(Equal("scc  ok  /usr/bin/scc (scc version 4.1.0)\n"))
+			Expect(modloc.errors.String()).To(BeEmpty())
 		})
 
 		It("fails with the reason when scc is missing", func() {
-			h.probe = func(context.Context) (string, string, error) {
+			modloc.probe = func(context.Context) (string, string, error) {
 				return "", "", fmt.Errorf("%w: install scc", scc.ErrNotFound)
 			}
 
-			Expect(h.run("doctor")).To(Equal(1))
-			Expect(h.report.String()).To(BeEmpty())
-			Expect(strings.ToLower(h.errors.String())).To(ContainSubstring("scc not found on path"), h.errors.String())
+			Expect(modloc.run("doctor")).To(Equal(1))
+			Expect(modloc.report.String()).To(BeEmpty())
+			Expect(strings.ToLower(modloc.errors.String())).To(ContainSubstring("scc not found on path"), modloc.errors.String())
 		})
 	})
 })
