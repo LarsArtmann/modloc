@@ -37,11 +37,11 @@ var (
 // values: cmdguard lists them for Enum-typed flags only, and a reader of
 // --help should never have to guess.
 //
-//nolint:golines // fleet golines pads tags against the tagalign order; tags cannot wrap (see .golangci.yml)
+
 type Config struct {
-	Language string `default:"go" flag:"language" help:"Language to count (go, rust): its files, and the modules its marker declares (go.mod, Cargo.toml)" short:"l" values:"go,rust"`
-	Format   string `default:"auto" flag:"format" help:"Output format (auto, table, tsv, csv, json, jsonl, markdown); auto is table on a terminal and tsv when piped" short:"f" values:"auto,table,tsv,csv,json,jsonl,markdown"`
-	Color    string `default:"auto" flag:"color" help:"Colors of the table output (auto, always, never)" values:"auto,always,never"`
+	Language string `default:"go"   flag:"language" help:"Language to count (go, rust): its files, and the modules its marker declares (go.mod, Cargo.toml)"            short:"l" values:"go,rust"`
+	Format   string `default:"auto" flag:"format"   help:"Output format (auto, table, tsv, csv, json, jsonl, markdown); auto is table on a terminal and tsv when piped" short:"f" values:"auto,table,tsv,csv,json,jsonl,markdown"`
+	Color    string `default:"auto" flag:"color"    help:"Colors of the table output (auto, always, never)"                                                                       values:"auto,always,never"`
 }
 
 // Probe reports which scc will run: its path and its version line.

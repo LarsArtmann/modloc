@@ -34,6 +34,7 @@ var _ = Describe("Scan", Serial, func() {
 		root = repository()
 		touched(filepath.Join(root, "go.mod"))
 		touched(filepath.Join(root, "usermgmt", "go.mod"))
+
 		counter = stubCounter{files: []loc.File{
 			goFile("main.go", 1),
 			goFile("usermgmt/user.go", 5),

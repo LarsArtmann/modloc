@@ -1,0 +1,21 @@
+{
+  "$schema": "https://dprint.dev/schemas/v0.json",
+  "plugins": [
+    "/home/lars/.local/state/buildflow/dprint-plugins/share/dprint-plugins/json-0.23.0.wasm",
+    "/home/lars/.local/state/buildflow/dprint-plugins/share/dprint-plugins/pretty_yaml-v0.6.0.wasm",
+    "/home/lars/.local/state/buildflow/dprint-plugins/share/dprint-plugins/markdown-0.22.1.wasm",
+    "/home/lars/.local/state/buildflow/dprint-plugins/share/dprint-plugins/dockerfile-0.4.1.wasm"
+  ],
+  "json": {},
+  "yaml": {},
+  "markdown": {},
+  "dockerfile": {},
+  "excludes": [
+    "vendor/**",
+    ".git/**",
+    "node_modules/**",
+    "**/CHANGELOG.md",
+    "**/helm/**/templates/**",
+    "**/charts/**/templates/**"
+  ]
+}

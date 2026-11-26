@@ -3,6 +3,7 @@ package scc_test
 import (
 	"context"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -29,14 +30,16 @@ var _ = Describe("Counter", func() {
 			files, err := counter.CountFiles(context.Background(), dir)
 
 			Expect(err).NotTo(HaveOccurred())
-			Expect(len(files)).To(Equal(10))
+			Expect(files).To(HaveLen(10))
 			Expect(files[0]).To(Equal(sccFile("main.go", 1)))
 			Expect(filePaths(files)[0:4]).To(Equal(goFiles()))
 		})
 
 		It("runs scc inside the repository, once, for its whole tree", func() {
 			record := filepath.Join(GinkgoT().TempDir(), "record")
-			counter, _ := counter(fakeSCC("printf '%s|%s\\n' \"$PWD\" \"$*\" >> " + record + "\ncat " + goldenPath() + "\n"))
+			counter, _ := counter(
+				fakeSCC("printf '%s|%s\\n' \"$PWD\" \"$*\" >> " + record + "\ncat " + goldenPath() + "\n"),
+			)
 
 			_, err := counter.CountFiles(context.Background(), dir)
 
@@ -58,7 +61,9 @@ var _ = Describe("Counter", func() {
 
 			_, err := counter.CountFiles(context.Background(), dir)
 
-			Expect(err).To(MatchError(And(ContainSubstring("exit status 3"), ContainSubstring("cannot walk: permission denied"))))
+			Expect(
+				err,
+			).To(MatchError(And(ContainSubstring("exit status 3"), ContainSubstring("cannot walk: permission denied"))))
 			Expect(diagnostics.String()).To(BeEmpty(), "the lines are part of the error, not printed twice")
 		})
 
@@ -67,7 +72,9 @@ var _ = Describe("Counter", func() {
 
 			_, err := counter.CountFiles(context.Background(), dir)
 
-			Expect(err).To(MatchError(And(ContainSubstring("…"), ContainSubstring("line 4\n"), ContainSubstring("line 8"))))
+			Expect(
+				err,
+			).To(MatchError(And(ContainSubstring("…"), ContainSubstring("line 4\n"), ContainSubstring("line 8"))))
 			Expect(err).NotTo(MatchError(ContainSubstring("line 3")))
 		})
 
@@ -134,12 +141,16 @@ var _ = Describe("Counter", func() {
 			DeferCleanup(cancel)
 
 			done := make(chan error, 1)
+
 			go func() {
 				_, err := counter.CountFiles(ctx, dir)
 				done <- err
 			}()
 
-			Eventually(ready, 10*time.Second).Should(BeAnExistingFile(), "the fake scc must be running before it is cancelled")
+			Eventually(
+				ready,
+				10*time.Second,
+			).Should(BeAnExistingFile(), "the fake scc must be running before it is cancelled")
 			cancel()
 
 			var err error
@@ -175,6 +186,7 @@ var _ = Describe("Counter", func() {
 
 			Expect(err).NotTo(HaveOccurred())
 			Expect(files).To(HaveLen(3))
+
 			for _, file := range files {
 				Expect(file.Code+file.Comment+file.Blank).To(Equal(file.Lines), file.Path)
 			}
