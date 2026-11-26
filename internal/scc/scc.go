@@ -17,6 +17,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/larsartmann/modloc/internal/loc"
 )
@@ -28,8 +29,19 @@ var (
 	// ErrNotFound reports that no scc executable is on PATH.
 	ErrNotFound = errors.New("scc not found on PATH")
 	// errEmptyOutput reports an scc run that printed nothing.
-	errEmptyOutput = errors.New("no JSON written")
+	errEmptyOutput = errors.New("scc wrote no output")
+	// errInvalidJSON reports an scc run whose output is not the JSON it promises.
+	errInvalidJSON = errors.New("scc wrote invalid JSON")
 )
+
+// pipeCloseGrace bounds how long CountFiles waits for scc's output pipes
+// after scc itself has ended. A process scc left behind can keep them open;
+// without a bound, a cancelled scan would hang until that process exits.
+const pipeCloseGrace = 2 * time.Second
+
+// rawOutputHint is the command that shows what scc really printed, for an
+// output that modloc could not read.
+const rawOutputHint = "; run 'scc --by-file --format json .' there to see what it printed"
 
 // installHint names the ways to get scc; the Nix package built from this
 // repository already wraps scc, so only other installs need it.
@@ -85,10 +97,10 @@ func (c Counter) CountFiles(ctx context.Context, dir string) ([]loc.File, error)
 		return nil, err
 	}
 
-	// scc prints one JSON object per file for the directory it is started in.
 	// scc prints one JSON object per file of the directory it is started in.
 	cmd := exec.CommandContext(ctx, bin, countArgs()...) //nolint:gosec // scc is resolved through PATH
 	cmd.Dir = dir
+	cmd.WaitDelay = pipeCloseGrace
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -103,7 +115,7 @@ func (c Counter) CountFiles(ctx context.Context, dir string) ([]loc.File, error)
 		return nil, fmt.Errorf("start %s in %s: %w", bin, dir, err)
 	}
 
-	files, decodeErr := decodeFiles(stdout)
+	files, decodeErr := decodeFiles(dir, stdout)
 	waitErr := cmd.Wait()
 
 	return c.settle(ctx, dir, files, decodeErr, waitErr, diagnostics.String())
@@ -142,7 +154,7 @@ func (c Counter) settle(
 	case waitErr != nil:
 		return nil, fmt.Errorf("scc failed in %s: %w%s", dir, waitErr, detail(diagnostics))
 	case decodeErr != nil:
-		return nil, fmt.Errorf("%s output for %s: %w", Binary, dir, decodeErr)
+		return nil, decodeErr
 	}
 
 	c.emit(diagnostics)
@@ -200,16 +212,16 @@ type languageGroup struct {
 }
 
 // decodeFiles reads scc's --by-file JSON into loc files.
-func decodeFiles(r io.Reader) ([]loc.File, error) {
+func decodeFiles(dir string, r io.Reader) ([]loc.File, error) {
 	var groups []languageGroup
 
 	err := json.UnmarshalDecode(jsontext.NewDecoder(r), &groups)
-	if errors.Is(err, io.EOF) {
-		err = errEmptyOutput
-	}
 
-	if err != nil {
-		return nil, fmt.Errorf("read %s output: %w", Binary, err)
+	switch {
+	case errors.Is(err, io.EOF):
+		return nil, fmt.Errorf("%w in %s", errEmptyOutput, dir)
+	case err != nil:
+		return nil, fmt.Errorf("%w in %s: %w%s", errInvalidJSON, dir, err, rawOutputHint)
 	}
 
 	files := make([]loc.File, 0)

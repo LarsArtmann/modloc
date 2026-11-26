@@ -15,7 +15,7 @@ import (
 
 // golden is real scc 4.1.0 output for the contract fixture: four Go files
 // under two modules, three Rust files, and the three Cargo manifests.
-var golden = filepath.Join("..", "testdata", "by-file.json")
+var golden = filepath.Join("testdata", "by-file.json")
 
 // fakeSCC writes an executable script that stands in for scc and returns its
 // path. body runs under /bin/sh, inside the directory being counted.
