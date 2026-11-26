@@ -15,6 +15,13 @@ import (
 	"github.com/larsartmann/modloc/internal/render"
 )
 
+var (
+	// errNoSuchDirectory names a path that does not exist.
+	errNoSuchDirectory = errors.New("no such directory")
+	// errNotDirectory names a path that is not a directory.
+	errNotDirectory = errors.New("not a directory")
+)
+
 // scanOptions are the parsed flags of one scan.
 type scanOptions struct {
 	language loc.Language
@@ -25,8 +32,8 @@ type scanOptions struct {
 // scan validates its options and every repository, counts each repository
 // and writes the reports. Nothing reaches stdout before every path has been
 // checked, so a bad path never leaves a half table behind.
-func scan(ctx context.Context, cfg *Config, args []string, d deps) error {
-	options, err := parseOptions(cfg, d.stdoutTTY)
+func scan(ctx context.Context, cfg *Config, args []string, env Environment) error {
+	options, err := parseOptions(cfg, env.StdoutTTY)
 	if err != nil {
 		return usageError(err)
 	}
@@ -41,16 +48,16 @@ func scan(ctx context.Context, cfg *Config, args []string, d deps) error {
 	reports := make([]loc.Report, 0, len(repos))
 
 	for _, repo := range repos {
-		report, scanErr := loc.Scan(ctx, repo, options.language, d.counter)
+		report, scanErr := loc.Scan(ctx, repo, options.language, env.Counter)
 		if scanErr != nil {
-			return scanErr
+			return fmt.Errorf("scan: %w", scanErr)
 		}
 
-		notice(d.stderr, report, options.language)
+		notice(env.Stderr, report, options.language)
 		reports = append(reports, report)
 	}
 
-	err = render.Write(d.stdout, reports, options.output, options.color)
+	err = render.Write(env.Stdout, reports, options.output, options.color)
 	if err != nil {
 		return fmt.Errorf("write report: %w", err)
 	}
@@ -64,17 +71,17 @@ func scan(ctx context.Context, cfg *Config, args []string, d deps) error {
 func parseOptions(cfg *Config, stdoutTTY bool) (scanOptions, error) {
 	language, err := loc.Parse(cfg.Language)
 	if err != nil {
-		return scanOptions{}, err
+		return scanOptions{}, fmt.Errorf("--language: %w", err)
 	}
 
 	format, err := render.Parse(cfg.Format)
 	if err != nil {
-		return scanOptions{}, err
+		return scanOptions{}, fmt.Errorf("--format: %w", err)
 	}
 
 	color, err := output.ParseColorMode(cfg.Color)
 	if err != nil {
-		return scanOptions{}, err
+		return scanOptions{}, fmt.Errorf("--color: %w", err)
 	}
 
 	return scanOptions{language: language, output: format.Resolve(stdoutTTY), color: color}, nil
@@ -98,11 +105,11 @@ func validateRepositories(repos []string) error {
 
 		switch {
 		case errors.Is(err, os.ErrNotExist):
-			return fmt.Errorf("no such directory: %s", repo)
+			return fmt.Errorf("%w: %s", errNoSuchDirectory, repo)
 		case err != nil:
 			return fmt.Errorf("cannot read %s: %w", repo, err)
 		case !info.IsDir():
-			return fmt.Errorf("not a directory: %s", repo)
+			return fmt.Errorf("%w: %s", errNotDirectory, repo)
 		}
 	}
 
@@ -113,17 +120,18 @@ func validateRepositories(repos []string) error {
 // and an empty scan. stdout stays pure data.
 func notice(w io.Writer, report loc.Report, language loc.Language) {
 	if len(report.Skipped) > 0 {
-		fmt.Fprintf(
+		// A notice that cannot be written is not worth failing a finished scan.
+		_, _ = fmt.Fprintf(
 			w,
 			"modloc: skipped %s under '%s': %s\n",
-			english.PluralWord(len(report.Skipped), "unreadable directory", "unreadable directories"),
+			english.Plural(len(report.Skipped), "unreadable directory", "unreadable directories"),
 			report.Repo,
 			strings.Join(report.Skipped, ", "),
 		)
 	}
 
 	if len(report.Modules) == 0 {
-		fmt.Fprintf(
+		_, _ = fmt.Fprintf(
 			w,
 			"modloc: no %s files under '%s'%s\n",
 			language.Extension(),

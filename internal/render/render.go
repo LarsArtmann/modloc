@@ -16,13 +16,20 @@ import (
 	"github.com/larsartmann/modloc/internal/loc"
 )
 
-// firstNumberColumn is where the numeric columns begin: repo and module are
-// names, everything after them is a count.
-const firstNumberColumn = 2
+const (
+	// firstNumberColumn is where the numeric columns begin: repo and module
+	// are names, everything after them is a count.
+	firstNumberColumn = 2
+	// columnCount is the number of columns in every row.
+	columnCount = 7
+)
 
 // Columns are the table headers in order; the JSON objects use the same names.
 func Columns() []string {
-	return []string{"repo", "module", "files", "code", "comment", "blank", "lines"}
+	// The fixed-length array makes a mismatch with columnCount a compile error.
+	columns := [columnCount]string{"repo", "module", "files", "code", "comment", "blank", "lines"}
+
+	return slices.Clone(columns[:])
 }
 
 // Write renders the reports in the given output. The rows of every report
@@ -76,7 +83,7 @@ func table(reports []loc.Report, out Output) *output.Table {
 
 // splitFooter separates the last row of a human table as its TOTAL row. Data
 // formats have no footer, and neither has an empty table.
-func splitFooter(cellRows [][]string, human bool) (body [][]string, total []string) {
+func splitFooter(cellRows [][]string, human bool) ([][]string, []string) {
 	if !human || len(cellRows) == 0 {
 		return cellRows, nil
 	}
@@ -87,9 +94,10 @@ func splitFooter(cellRows [][]string, human bool) (body [][]string, total []stri
 // cells renders every module as one row of strings, grouping thousands for
 // the human formats.
 func cells(reports []loc.Report, grouped bool) [][]string {
-	out := make([][]string, 0)
+	modules := rows(reports)
+	out := make([][]string, 0, len(modules))
 
-	for _, r := range rows(reports) {
+	for _, r := range modules {
 		out = append(out, []string{
 			r.Repo,
 			r.Module,
@@ -124,7 +132,7 @@ func footer(reports []loc.Report) []string {
 
 	return []string{
 		"TOTAL",
-		english.PluralWord(total.Modules, "module", "modules"),
+		english.Plural(total.Modules, "module", "modules"),
 		humanize.Comma(int64(total.Files)),
 		humanize.Comma(int64(total.Code)),
 		humanize.Comma(int64(total.Comment)),
@@ -137,7 +145,7 @@ func footer(reports []loc.Report) []string {
 // tables carry strings only, so padding is what makes counts line up on
 // their right edge in a terminal.
 func alignNumbers(cellRows [][]string) [][]string {
-	widths := make([]int, len(Columns()))
+	var widths [columnCount]int
 
 	for _, cellRow := range cellRows {
 		for column := firstNumberColumn; column < len(cellRow); column++ {

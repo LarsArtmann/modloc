@@ -1,6 +1,6 @@
 // Package cli wires the modloc command line on cmdguard v5: typed flags,
 // help, version, doctor and the describe contract. modloc is one command, so
-// the root itself runs the scan. Everything it needs from its environment is
+// the root itself runs the scan. Everything it needs from its Environment is
 // injected, which keeps the whole command testable against buffers.
 package cli
 
@@ -25,29 +25,47 @@ const Name = "modloc"
 // script can tell "called it wrong" from "the scan went wrong".
 const exitCodeUsage = 2
 
-// errNoConfig reports a handler that ran without cmdguard's flag parsing.
-var errNoConfig = errors.New("flags were not parsed into the command")
+var (
+	// errNoConfig reports a handler that ran without cmdguard's flag parsing.
+	errNoConfig = errors.New("flags were not parsed into the command")
+	// errFlagUsage marks an error from the command line itself: an unknown
+	// flag, a missing value, bad syntax.
+	errFlagUsage = errors.New("invalid usage")
+)
 
-// Config carries the root command's flags.
+// Config carries the root command's flags. Each help names its allowed
+// values: cmdguard lists them for Enum-typed flags only, and a reader of
+// --help should never have to guess.
+//
+//nolint:golines // fleet golines pads tags against the tagalign order; tags cannot wrap (see .golangci.yml)
 type Config struct {
-	Language string `flag:"language" short:"l" default:"go" values:"go,rust" help:"Language to count: its files, and modules found by its marker (go.mod, Cargo.toml)"`
-	Format   string `flag:"format" short:"f" default:"auto" values:"auto,table,tsv,csv,json,jsonl,markdown" help:"Output format; auto is table on a terminal and tsv when piped"`
-	Color    string `flag:"color" default:"auto" values:"auto,always,never" help:"Colors of the table output"`
+	Language string `default:"go" flag:"language" help:"Language to count (go, rust): its files, and the modules its marker declares (go.mod, Cargo.toml)" short:"l" values:"go,rust"`
+	Format   string `default:"auto" flag:"format" help:"Output format (auto, table, tsv, csv, json, jsonl, markdown); auto is table on a terminal and tsv when piped" short:"f" values:"auto,table,tsv,csv,json,jsonl,markdown"`
+	Color    string `default:"auto" flag:"color" help:"Colors of the table output (auto, always, never)" values:"auto,always,never"`
 }
 
-// probe reports which scc will run: its path and its version line.
-type probe func(ctx context.Context) (path string, version string, err error)
+// Probe reports which scc will run: its path and its version line.
+type Probe func(ctx context.Context) (path string, version string, err error)
 
-// deps are what the commands need from their environment. Production wires
-// the process's own streams and the scc binary; tests substitute buffers.
-type deps struct {
-	stdout    io.Writer
-	stderr    io.Writer
-	stdoutTTY bool
-	counter   loc.FileCounter
-	probe     probe
-	version   string
-	commit    string
+// Environment is what the commands need from their environment: the streams
+// they write to, whether stdout is a terminal, the counter that knows line
+// counts, the probe that names the counter's binary, and the version stamps.
+// Production wires the process itself; tests substitute buffers.
+type Environment struct {
+	// Stdout receives the report.
+	Stdout io.Writer
+	// Stderr receives notices and failed writes.
+	Stderr io.Writer
+	// StdoutTTY says whether Stdout is a terminal; it resolves the auto
+	// format.
+	StdoutTTY bool
+	// Counter counts the files of a repository.
+	Counter loc.FileCounter
+	// Scc names the binary that Counter runs.
+	Scc Probe
+	// Version and Commit are the build stamps shown by --version.
+	Version string
+	Commit  string
 }
 
 // Main runs modloc against the process's streams and returns its exit code:
@@ -60,39 +78,39 @@ func Main(ctx context.Context, args []string, version, commit string) int {
 // A construction error is printed here; the execution error is printed by
 // cmdguard exactly once and returned unprinted.
 func Run(ctx context.Context, args []string, version, commit string) error {
-	d := deps{
-		stdout:    os.Stdout,
-		stderr:    os.Stderr,
-		stdoutTTY: isTerminal(os.Stdout),
-		counter:   scc.New(),
-		probe:     scc.New().Probe,
-		version:   version,
-		commit:    commit,
+	env := Environment{
+		Stdout:    os.Stdout,
+		Stderr:    os.Stderr,
+		StdoutTTY: isTerminal(os.Stdout),
+		Counter:   scc.New(),
+		Scc:       scc.New().Probe,
+		Version:   version,
+		Commit:    commit,
 	}
 
-	cli, err := Build(d)
+	cli, err := Build(env) //nolint:contextcheck // the handler must use cobra's signal-cancelled context
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 
 		return err
 	}
 
-	return execute(cli, ctx, args)
+	return Execute(cli, ctx, args)
 }
 
 // Build assembles the command tree: the scanning root and the doctor command.
-func Build(d deps) (*v5.CLI[Config], error) {
-	cli, err := v5.NewCLI(Name, long, Config{}, options(d.version, d.commit)...)
+func Build(env Environment) (*v5.CLI[Config], error) {
+	cli, err := v5.NewCLI(Name, long, Config{}, options(env.Version, env.Commit)...)
 	if err != nil {
 		return nil, err
 	}
 
-	wireRoot(cli, d)
+	wireRoot(cli, env)
 
 	doctorCmd, doctorErr := v5.NewCommand(
 		"doctor",
 		v5.NoFlags{},
-		func(ctx context.Context, _ *Config, _ v5.NoFlags) error { return runDoctor(ctx, d) },
+		func(ctx context.Context, _ *Config, _ v5.NoFlags) error { return runDoctor(ctx, env) },
 		v5.WithShort("Check that modloc can count: locate scc and print its version"),
 	)
 
@@ -123,20 +141,23 @@ const examples = "  # Scan the current directory\n" +
 	"  modloc -l rust --format markdown ~/projects/collector-utils"
 
 // wireRoot makes the root command the scan itself.
-func wireRoot(cli *v5.CLI[Config], d deps) {
+func wireRoot(cli *v5.CLI[Config], env Environment) {
 	root := cli.RootCommand()
 	root.Use = Name + " [flags] [repo...]"
 	root.Example = examples
 	// The root has subcommands (doctor, version, ...), so cobra would treat a
 	// bare path as an unknown command without an explicit args validator.
 	root.Args = cobra.ArbitraryArgs
+	root.SetFlagErrorFunc(func(_ *cobra.Command, err error) error {
+		return fmt.Errorf("%w: %w", errFlagUsage, err)
+	})
 	root.RunE = func(cmd *cobra.Command, args []string) error {
 		cfg, ok := v5.ConfigFromContext[Config](cmd.Context())
 		if !ok {
 			return errNoConfig
 		}
 
-		return scan(cmd.Context(), cfg, args, d)
+		return scan(cmd.Context(), cfg, args, env)
 	}
 }
 
@@ -155,22 +176,25 @@ func options(version, commit string) []v5.CLIOption {
 	return opts
 }
 
-// execute runs the CLI through cmdguard's exit-code contract: flag-value
-// rejections from its binding layer are re-tagged as usage errors, so the
-// process exits 2 like every other bad invocation.
-func execute(cli *v5.CLI[Config], ctx context.Context, args []string) error {
+// Execute runs the CLI through cmdguard's exit-code contract: a malformed
+// command line is re-tagged as a usage error, so the process exits 2.
+func Execute(cli *v5.CLI[Config], ctx context.Context, args []string) error {
 	err := cli.ExecuteWithArgs(ctx, args)
-	if isFlagValueError(err) {
+	if isUsageError(err) {
 		return usageError(err)
 	}
 
 	return err
 }
 
-// isFlagValueError reports whether err is cmdguard rejecting a flag value or
-// the command line itself: an unknown flag, a missing value, a bad enum.
-// These are usage errors by definition.
-func isFlagValueError(err error) bool {
+// isUsageError reports whether err means the command was called wrong: a
+// malformed command line, or cmdguard's binding layer rejecting a flag value
+// (a bad enum, a number out of bounds). Anything else is a real failure.
+func isUsageError(err error) bool {
+	if errors.Is(err, errFlagUsage) {
+		return true
+	}
+
 	for _, sentinel := range []error{
 		v5.ErrFlagParseFailed,
 		v5.ErrInvalidEnum,

@@ -1,0 +1,4 @@
+# BuildFlow coverage for modloc. Non-default information only — the fleet
+# defaults cover everything else.
+#
+# No skips, no env overrides: stdlib + public deps only, no code generation.

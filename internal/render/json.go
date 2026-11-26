@@ -48,6 +48,7 @@ func writeJSONL(w io.Writer, rows []row) error {
 // order.
 func rows(reports []loc.Report) []row {
 	out := make([]row, 0)
+
 	for _, report := range reports {
 		for _, module := range report.Modules {
 			out = append(out, row{

@@ -36,6 +36,11 @@ var (
 const installHint = "install scc, for example `go install github.com/boyter/scc/v4@latest` " +
 	"or `brew install scc` (the Nix package from the modloc repository wraps scc already)"
 
+// countArgs make scc print one JSON object per file.
+func countArgs() []string {
+	return []string{"--by-file", "--format", "json", "."}
+}
+
 // Counter is a loc.FileCounter backed by the scc binary.
 type Counter struct {
 	// lookPath resolves the scc executable.
@@ -44,10 +49,31 @@ type Counter struct {
 	stderr io.Writer
 }
 
+// Option configures a Counter.
+type Option func(*Counter)
+
+// WithBinary pins the scc executable instead of resolving scc on PATH.
+func WithBinary(bin string) Option {
+	return func(c *Counter) {
+		c.lookPath = func(string) (string, error) { return exec.LookPath(bin) }
+	}
+}
+
+// WithStderr sends scc's diagnostics to w instead of the process's stderr.
+func WithStderr(w io.Writer) Option {
+	return func(c *Counter) { c.stderr = w }
+}
+
 // New returns a Counter that runs the scc found on PATH and lets scc's
 // diagnostics through to the process's stderr.
-func New() Counter {
-	return Counter{lookPath: exec.LookPath, stderr: os.Stderr}
+func New(opts ...Option) Counter {
+	counter := Counter{lookPath: exec.LookPath, stderr: os.Stderr}
+
+	for _, opt := range opts {
+		opt(&counter)
+	}
+
+	return counter
 }
 
 // CountFiles runs scc in dir and returns the per-file counts, with paths
@@ -60,7 +86,8 @@ func (c Counter) CountFiles(ctx context.Context, dir string) ([]loc.File, error)
 	}
 
 	// scc prints one JSON object per file for the directory it is started in.
-	cmd := exec.CommandContext(ctx, bin, "--by-file", "--format", "json", ".") //nolint:gosec // resolved through PATH on purpose: scc is a runtime dependency
+	// scc prints one JSON object per file of the directory it is started in.
+	cmd := exec.CommandContext(ctx, bin, countArgs()...) //nolint:gosec // scc is resolved through PATH
 	cmd.Dir = dir
 
 	stdout, err := cmd.StdoutPipe()
@@ -85,15 +112,15 @@ func (c Counter) CountFiles(ctx context.Context, dir string) ([]loc.File, error)
 // Probe resolves the scc executable and asks it for its version. It backs the
 // doctor command: the result names what will run, so a wrong scc on PATH is
 // visible.
-func (c Counter) Probe(ctx context.Context) (path string, version string, err error) {
-	path, err = c.lookup()
+func (c Counter) Probe(ctx context.Context) (string, string, error) {
+	path, err := c.lookup()
 	if err != nil {
 		return "", "", err
 	}
 
-	out, err := exec.CommandContext(ctx, path, "--version").Output() //nolint:gosec // see CountFiles
+	out, err := exec.CommandContext(ctx, path, "--version").Output() //nolint:gosec // scc is resolved through PATH
 	if err != nil {
-		return path, "", fmt.Errorf("%s --version failed: %w", path, err)
+		return "", "", fmt.Errorf("%s --version failed: %w", path, err)
 	}
 
 	return path, strings.TrimSpace(string(out)), nil
@@ -157,7 +184,8 @@ func detail(diagnostics string) string {
 	return "\nscc wrote:\n  " + strings.Join(lines, "\n  ")
 }
 
-// fileJob is one entry of scc's --by-file JSON.
+// fileJob is one entry of scc's --by-file JSON. The keys are scc's, in its
+// own case; see the tagliatelle override in .golangci.yml.
 type fileJob struct {
 	Location string `json:"Location"`
 	Lines    int    `json:"Lines"`
@@ -185,6 +213,7 @@ func decodeFiles(r io.Reader) ([]loc.File, error) {
 	}
 
 	files := make([]loc.File, 0)
+
 	for _, group := range groups {
 		for _, job := range group.Files {
 			files = append(files, loc.File{

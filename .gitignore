@@ -1,0 +1,35 @@
+/bin/
+/result
+*.tmp
+
+## Go
+*.exe
+*.test
+*.out
+vendor/
+go.work
+go.work.sum
+/modloc
+
+## Nix
+result-*
+/.pre-commit-status.yaml
+
+## Reports, coverage and caches
+reports/
+coverage/
+*.log
+*.temp
+
+## Editors and operating systems
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store
+
+## Secrets and environment
+.env
+.env.*
+*.pem
+*.key

@@ -30,6 +30,7 @@ func Attribute(files []File, markers []string, lang Language) []Module {
 		}
 
 		name := enclosing(path, set, rootIsModule)
+
 		module := totals[name]
 		if module == nil {
 			module = &Module{Path: name}
