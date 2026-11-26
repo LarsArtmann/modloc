@@ -16,5 +16,5 @@ var (
 )
 
 func main() {
-	os.Exit(cli.Main(context.Background(), os.Args[1:], version, commit))
+	os.Exit(cli.Main(context.Background(), os.Args[1:], cli.Stamp{Version: version, Commit: commit}))
 }

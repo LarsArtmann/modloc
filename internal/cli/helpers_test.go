@@ -215,8 +215,7 @@ func (h *harness) run(args ...string) int {
 		StdoutTTY: h.terminal,
 		Counter:   h.counter,
 		Scc:       h.probe,
-		Version:   "1.2.3",
-		Commit:    "abc1234",
+		Stamp:     cli.Stamp{Version: "1.2.3", Commit: "abc1234"},
 	}
 
 	c, err := cli.Build(env)

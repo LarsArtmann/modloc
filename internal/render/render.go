@@ -74,10 +74,10 @@ func writeMarkdown(w io.Writer, data *output.Table, color output.ColorMode) erro
 func table(reports []loc.Report, out Output) *output.Table {
 	data := output.NewTable(Columns())
 
-	human := out.isHuman()
-	cellRows := cells(reports, human)
+	forPeople := out.isHuman()
+	cellRows := cells(reports, forPeople)
 
-	if human && len(cellRows) > 0 {
+	if forPeople && len(cellRows) > 0 {
 		cellRows = append(cellRows, footer(reports))
 	}
 
@@ -85,7 +85,7 @@ func table(reports []loc.Report, out Output) *output.Table {
 		cellRows = alignNumbers(cellRows)
 	}
 
-	body, total := splitFooter(cellRows, human)
+	body, total := splitFooter(cellRows, forPeople)
 
 	for _, cellRow := range body {
 		data.AddRow(cellRow)
@@ -100,17 +100,23 @@ func table(reports []loc.Report, out Output) *output.Table {
 
 // splitFooter separates the last row of a human table as its TOTAL row. Data
 // formats have no footer, and neither has an empty table.
-func splitFooter(cellRows [][]string, human bool) ([][]string, []string) {
-	if !human || len(cellRows) == 0 {
+func splitFooter(cellRows [][]string, forPeople bool) ([][]string, []string) {
+	if !forPeople {
 		return cellRows, nil
 	}
 
-	return cellRows[:len(cellRows)-1], cellRows[len(cellRows)-1]
+	for index, row := range cellRows {
+		if index == len(cellRows)-1 {
+			return cellRows[:index], row
+		}
+	}
+
+	return cellRows, nil
 }
 
 // cells renders every module as one row of strings, grouping thousands for
 // the human formats.
-func cells(reports []loc.Report, grouped bool) [][]string {
+func cells(reports []loc.Report, forPeople bool) [][]string {
 	modules := rows(reports)
 	out := make([][]string, 0, len(modules))
 
@@ -118,11 +124,11 @@ func cells(reports []loc.Report, grouped bool) [][]string {
 		out = append(out, []string{
 			r.Repo,
 			r.Module,
-			number(r.Files, grouped),
-			number(r.Code, grouped),
-			number(r.Comment, grouped),
-			number(r.Blank, grouped),
-			number(r.Lines, grouped),
+			number(r.Files, forPeople),
+			number(r.Code, forPeople),
+			number(r.Comment, forPeople),
+			number(r.Blank, forPeople),
+			number(r.Lines, forPeople),
 		})
 	}
 
@@ -131,8 +137,8 @@ func cells(reports []loc.Report, grouped bool) [][]string {
 
 // number writes a count the way its reader wants it: exact for data,
 // grouped for people.
-func number(value int, grouped bool) string {
-	if grouped {
+func number(value int, forPeople bool) string {
+	if forPeople {
 		return humanize.Comma(int64(value))
 	}
 
@@ -165,28 +171,43 @@ func footer(reports []loc.Report) []string {
 // counts for the width too: without it, small counts would sit left under a
 // wide header while large ones lined up on the right.
 func alignNumbers(cellRows [][]string) [][]string {
+	out := make([][]string, 0, len(cellRows))
+
+	for _, cellRow := range cellRows {
+		out = append(out, slices.Clone(cellRow))
+	}
+
+	for column, width := range headerWidths() {
+		if column < firstNumberColumn {
+			continue
+		}
+
+		widest := width
+
+		for _, cellRow := range cellRows {
+			if column < len(cellRow) {
+				widest = max(widest, len(cellRow[column]))
+			}
+		}
+
+		for _, padded := range out {
+			if column < len(padded) {
+				padded[column] = strings.Repeat(" ", widest-len(padded[column])) + padded[column]
+			}
+		}
+	}
+
+	return out
+}
+
+// headerWidths is the width of every column before any cell is counted:
+// the width of its header.
+func headerWidths() [columnCount]int {
 	var widths [columnCount]int
 
 	for column, header := range Columns() {
 		widths[column] = len(header)
 	}
 
-	for _, cellRow := range cellRows {
-		for column := firstNumberColumn; column < len(cellRow); column++ {
-			widths[column] = max(widths[column], len(cellRow[column]))
-		}
-	}
-
-	out := make([][]string, 0, len(cellRows))
-
-	for _, cellRow := range cellRows {
-		padded := slices.Clone(cellRow)
-		for column := firstNumberColumn; column < len(padded); column++ {
-			padded[column] = strings.Repeat(" ", widths[column]-len(padded[column])) + padded[column]
-		}
-
-		out = append(out, padded)
-	}
-
-	return out
+	return widths
 }

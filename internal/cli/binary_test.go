@@ -161,7 +161,7 @@ var _ = Describe("the built binary", Serial, func() {
 			enter(tree("stray"))
 
 			code, out := throughProcessStdout(func() int {
-				return cli.Main(context.Background(), nil, "9.9.9", "")
+				return cli.Main(context.Background(), nil, cli.Stamp{Version: "9.9.9"})
 			})
 
 			Expect(code).To(Equal(0))
@@ -170,16 +170,16 @@ var _ = Describe("the built binary", Serial, func() {
 
 		It("prints the version with its commit through the process's stdout", func() {
 			code, out := throughProcessStdout(func() int {
-				return cli.Main(context.Background(), []string{"--version"}, "9.9.9", "feedface")
+				return cli.Main(context.Background(), []string{"--version"}, cli.Stamp{Version: "9.9.9", Commit: "feedface"})
 			})
 
 			Expect(code).To(Equal(0))
-			Expect(out).To(ContainSubstring("modloc version 9.9.9 (feedface)"))
+			Expect(out).To(ContainSubstring("modloc version 9.9.9 (feedfac"), "the commit is shown abbreviated")
 		})
 
 		It("returns 2 for a usage error and prints nothing on stdout", func() {
 			code, out := throughProcessStdout(func() int {
-				return cli.Main(context.Background(), []string{"--bogus"}, "9.9.9", "")
+				return cli.Main(context.Background(), []string{"--bogus"}, cli.Stamp{Version: "9.9.9"})
 			})
 
 			Expect(code).To(Equal(2))

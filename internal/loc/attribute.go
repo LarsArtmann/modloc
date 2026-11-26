@@ -21,7 +21,7 @@ func Attribute(files []File, markers []string, lang Language) []Module {
 
 	_, rootIsModule := set[RootModule]
 
-	totals := make(map[string]*Module)
+	totals := make(map[string]Module)
 
 	for _, file := range files {
 		path := Normalize(file.Path)
@@ -31,13 +31,12 @@ func Attribute(files []File, markers []string, lang Language) []Module {
 
 		name := enclosing(path, set, rootIsModule)
 
-		module := totals[name]
-		if module == nil {
-			module = &Module{Path: name}
-			totals[name] = module
+		module, seen := totals[name]
+		if !seen {
+			module = Module{Path: name}
 		}
 
-		addFile(module, file)
+		totals[name] = counted(module, file)
 	}
 
 	return sortedModules(totals)
@@ -64,21 +63,23 @@ func enclosing(path string, markers map[string]struct{}, rootIsModule bool) stri
 	return Unattributed
 }
 
-// addFile folds one file's lines into its module.
-func addFile(module *Module, file File) {
+// counted is module with the lines of one file folded in.
+func counted(module Module, file File) Module {
 	module.Files++
 	module.Lines += file.Lines
 	module.Code += file.Code
 	module.Comment += file.Comment
 	module.Blank += file.Blank
+
+	return module
 }
 
 // sortedModules returns the modules as report rows: code lines descending,
 // then path ascending.
-func sortedModules(totals map[string]*Module) []Module {
+func sortedModules(totals map[string]Module) []Module {
 	modules := make([]Module, 0, len(totals))
 	for _, module := range totals {
-		modules = append(modules, *module)
+		modules = append(modules, module)
 	}
 
 	slices.SortFunc(modules, func(a, b Module) int {

@@ -62,29 +62,36 @@ type Environment struct {
 	Counter loc.FileCounter
 	// Scc names the binary that Counter runs.
 	Scc Probe
-	// Version and Commit are the build stamps shown by --version.
+	// Stamp identifies the binary for --version.
+	Stamp Stamp
+}
+
+// Stamp identifies the binary: what --version prints. One value instead of
+// two strings, so a version can never be passed where a commit belongs.
+type Stamp struct {
+	// Version is the release version; "dev" when built without a stamp.
 	Version string
-	Commit  string
+	// Commit is the commit the binary was built from; empty when unknown.
+	Commit string
 }
 
 // Main runs modloc against the process's streams and returns its exit code:
 // 0 on success, 1 for a failed scan or path, 2 for a usage error.
-func Main(ctx context.Context, args []string, version, commit string) int {
-	return v5.ExitCode(Run(ctx, args, version, commit))
+func Main(ctx context.Context, args []string, stamp Stamp) int {
+	return v5.ExitCode(Run(ctx, args, stamp))
 }
 
 // Run builds the CLI against the process's streams and scc and executes args.
 // A construction error is printed here; the execution error is printed by
 // cmdguard exactly once and returned unprinted.
-func Run(ctx context.Context, args []string, version, commit string) error {
+func Run(ctx context.Context, args []string, stamp Stamp) error {
 	env := Environment{
 		Stdout:    os.Stdout,
 		Stderr:    os.Stderr,
 		StdoutTTY: isTerminal(os.Stdout),
 		Counter:   scc.New(),
 		Scc:       scc.New().Probe,
-		Version:   version,
-		Commit:    commit,
+		Stamp:     stamp,
 	}
 
 	cli, err := Build(env) //nolint:contextcheck // the handler must use cobra's signal-cancelled context
@@ -103,7 +110,7 @@ func Build(env Environment) (*v5.CLI[Config], error) {
 		Name,
 		short,
 		Config{},
-		append(options(env.Version, env.Commit), v5.WithCLILong(long))...,
+		append(options(env.Stamp.Version, env.Stamp.Commit), v5.WithCLILong(long))...,
 	)
 	if err != nil {
 		return nil, err
