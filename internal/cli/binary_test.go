@@ -23,6 +23,15 @@ var built struct {
 	err  error
 }
 
+// cleanupBinary removes the compiled binary. TestCLI calls it once the suite
+// has ended: a cleanup tied to the first spec would delete the binary before
+// every later spec runs.
+func cleanupBinary() {
+	if built.path != "" {
+		_ = os.RemoveAll(filepath.Dir(built.path))
+	}
+}
+
 // binary compiles cmd/modloc and returns the executable. Building needs the
 // Go toolchain, which a deployed host does not have; callers skip first.
 func binary() string {
@@ -33,8 +42,6 @@ func binary() string {
 
 			return
 		}
-
-		DeferCleanup(func() { _ = os.RemoveAll(dir) })
 
 		built.path = filepath.Join(dir, "modloc")
 

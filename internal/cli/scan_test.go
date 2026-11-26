@@ -58,12 +58,14 @@ var _ = Describe("modloc", func() {
 
 				Expect(h.run(h.root, ".")).To(Equal(0))
 
-				rows := append([]string{}, goRows...)
-				for _, row := range goRows {
-					rows = append(rows, "."+"\t"+row)
+				out := []string{header}
+				for _, repo := range []string{h.root, "."} {
+					for _, row := range goRows {
+						out = append(out, repo+"\t"+row)
+					}
 				}
 
-				Expect(h.report.String()).To(Equal(tsv(h.root, rows...)))
+				Expect(h.report.String()).To(Equal(lines(out...)))
 			})
 		})
 

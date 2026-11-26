@@ -12,4 +12,5 @@ func TestCLI(t *testing.T) {
 	t.Parallel()
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "modloc Command Line Suite")
+	cleanupBinary()
 }
