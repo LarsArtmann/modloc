@@ -83,7 +83,11 @@ var _ = Describe("Counter", func() {
 
 			_, err := counter.CountFiles(context.Background(), dir)
 
-			Expect(err).To(MatchError(And(ContainSubstring("scc output"), ContainSubstring("not json"))))
+			Expect(err).To(MatchError(And(
+				ContainSubstring("scc wrote invalid JSON"),
+				ContainSubstring("invalid character"),
+				ContainSubstring("scc --by-file --format json"),
+			)))
 		})
 
 		It("reports an scc that wrote nothing", func() {
@@ -91,7 +95,7 @@ var _ = Describe("Counter", func() {
 
 			_, err := counter.CountFiles(context.Background(), dir)
 
-			Expect(err).To(MatchError(ContainSubstring("no JSON written")))
+			Expect(err).To(MatchError(ContainSubstring("scc wrote no output")))
 		})
 
 		It("lets scc's own diagnostics through on success", func() {
@@ -134,29 +138,52 @@ var _ = Describe("Counter", func() {
 	})
 
 	Describe("cancellation", func() {
-		It("stops when its context is cancelled", func() {
+		// cancelWhile counts against a fake scc that announces itself, cancels
+		// the context once the fake is running, and returns how long the pass
+		// took and its error.
+		cancelWhile := func(body string) (time.Duration, error) {
 			ready := filepath.Join(GinkgoT().TempDir(), "ready")
-			counter, _ := counter(fakeSCC("touch " + ready + "\nsleep 30\n"))
+			counter, _ := counter(fakeSCC("touch " + ready + "\n" + body))
 			ctx, cancel := context.WithCancel(context.Background())
 			DeferCleanup(cancel)
 
-			done := make(chan error, 1)
+			type outcome struct {
+				elapsed time.Duration
+				err     error
+			}
+
+			done := make(chan outcome, 1)
+			started := time.Now()
 
 			go func() {
 				_, err := counter.CountFiles(ctx, dir)
-				done <- err
+				done <- outcome{elapsed: time.Since(started), err: err}
 			}()
 
 			Eventually(
 				ready,
 				10*time.Second,
-			).Should(BeAnExistingFile(), "the fake scc must be running before it is cancelled")
+			).Should(BeAnExistingFile(), "the fake must be running before it is cancelled")
 			cancel()
 
-			var err error
+			var result outcome
 
-			Eventually(done, 10*time.Second).Should(Receive(&err))
+			Eventually(done, 20*time.Second).Should(Receive(&result))
+
+			return result.elapsed, result.err
+		}
+
+		It("stops when its context is cancelled", func() {
+			_, err := cancelWhile("exec sleep 30\n")
+
 			Expect(errors.Is(err, context.Canceled)).To(BeTrue())
+		})
+
+		It("does not hang on a process a cancelled scc left behind", func() {
+			elapsed, err := cancelWhile("sleep 30 & wait\n")
+
+			Expect(errors.Is(err, context.Canceled)).To(BeTrue())
+			Expect(elapsed).To(BeNumerically("<", 15*time.Second), "it must not wait out the leftover sleep")
 		})
 	})
 
