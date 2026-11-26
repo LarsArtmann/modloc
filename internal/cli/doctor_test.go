@@ -32,7 +32,10 @@ var _ = Describe("modloc", func() {
 
 			Expect(modloc.run("doctor")).To(Equal(1))
 			Expect(modloc.report.String()).To(BeEmpty())
-			Expect(strings.ToLower(modloc.errors.String())).To(ContainSubstring("scc not found on path"), modloc.errors.String())
+			Expect(strings.ToLower(modloc.errors.String())).To(
+				ContainSubstring("scc not found on path"),
+				modloc.errors.String(),
+			)
 		})
 	})
 })

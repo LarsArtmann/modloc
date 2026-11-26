@@ -46,7 +46,6 @@ func binary() string {
 
 		built.path = filepath.Join(dir, "modloc")
 
-		//nolint:gosec // the toolchain is resolved through PATH
 		build := exec.CommandContext(GinkgoT().Context(), "go", "build", "-o", built.path, "../../cmd/modloc")
 
 		out, err := build.CombinedOutput()
@@ -69,26 +68,35 @@ type invocation struct {
 
 // invoke runs the binary in dir and returns its exit code and streams.
 func invoke(bin string, dir string, args ...string) invocation {
-	//nolint:gosec // the freshly built binary
 	cmd := exec.CommandContext(context.Background(), bin, args...)
 	cmd.Dir = dir
 
 	var stdout, stderr bytes.Buffer
-	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 
-	err := cmd.Run()
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
 
-	code := 0
-	if err != nil {
-		exitErr, exited := errors.AsType[*exec.ExitError](err)
-		if !exited {
-			Fail("could not run " + bin + ": " + err.Error())
-		}
+	return invocation{
+		code:   exitCode(cmd.Run(), bin),
+		stdout: stdout.String(),
+		stderr: stderr.String(),
+	}
+}
 
-		code = exitErr.ExitCode()
+// exitCode is the exit code behind err: 0 for a run that succeeded, the
+// process's own code for a run that failed. A binary that could not be
+// started at all fails the spec.
+func exitCode(err error, bin string) int {
+	if err == nil {
+		return 0
 	}
 
-	return invocation{code: code, stdout: stdout.String(), stderr: stderr.String()}
+	exitErr, exited := errors.AsType[*exec.ExitError](err)
+	if !exited {
+		Fail("could not run " + bin + ": " + err.Error())
+	}
+
+	return exitErr.ExitCode()
 }
 
 var _ = Describe("the built binary", Serial, func() {
@@ -100,6 +108,7 @@ var _ = Describe("the built binary", Serial, func() {
 		}
 
 		realSCC()
+
 		bin = binary()
 	})
 

@@ -60,6 +60,7 @@ var _ = Describe("modloc", func() {
 
 				out := make([]string, 0, 1+len(goRows)*2)
 				out = append(out, header)
+
 				for _, repo := range []string{modloc.root, "."} {
 					for _, row := range goRows {
 						out = append(out, repo+"\t"+row)

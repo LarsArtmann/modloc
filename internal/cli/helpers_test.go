@@ -38,7 +38,6 @@ type fixtureFile struct {
 // trees are the fixture repositories. Their files are exactly what the
 // bash modloc was last run on for the parity goldens in testdata/parity: a
 // file changed here without recapturing its golden is a parity failure.
-//
 var trees = map[string][]fixtureFile{
 	"contract": {
 		{"go.mod", "module example.com/root\n"},
