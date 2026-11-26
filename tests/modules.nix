@@ -9,7 +9,7 @@
 }:
 
 let
-  lib = nixpkgs.lib;
+  inherit (nixpkgs) lib;
   pkgs = nixpkgs.legacyPackages.${system};
   pkg = flake.packages.${system}.default;
 

@@ -62,11 +62,11 @@ $ modloc -f json ~/projects/a ~/projects/b > modules.json
 $ modloc --help
 ```
 
-| Flag             | Values                                                          | Default | Meaning                                  |
-| ---------------- | --------------------------------------------------------------- | ------- | ---------------------------------------- |
-| `-l`, `--language` | `go`, `rust`                                                  | `go`    | Which files to count, and by which marker |
-| `-f`, `--format` | `auto`, `table`, `tsv`, `csv`, `json`, `jsonl`, `markdown`      | `auto`  | Output format                            |
-| `--color`        | `auto`, `always`, `never`                                       | `auto`  | Colors of the table and Markdown output  |
+| Flag               | Values                                                     | Default | Meaning                                   |
+| ------------------ | ---------------------------------------------------------- | ------- | ----------------------------------------- |
+| `-l`, `--language` | `go`, `rust`                                               | `go`    | Which files to count, and by which marker |
+| `-f`, `--format`   | `auto`, `table`, `tsv`, `csv`, `json`, `jsonl`, `markdown` | `auto`  | Output format                             |
+| `--color`          | `auto`, `always`, `never`                                  | `auto`  | Colors of the table and Markdown output   |
 
 `auto` picks `table` when stdout is a terminal and `tsv` when it is piped or
 redirected, so `modloc > file` gives data and `modloc` gives a picture.
@@ -74,11 +74,11 @@ redirected, so `modloc > file` gives data and `modloc` gives a picture.
 `modloc doctor` names the `scc` binary that will run. `modloc --version`
 prints the version and the commit it was built from.
 
-| Exit code | Meaning                                      |
-| --------- | -------------------------------------------- |
-| `0`       | Counted                                       |
-| `1`       | A path is no directory, or the count failed  |
-| `2`       | The command line is wrong                     |
+| Exit code | Meaning                                     |
+| --------- | ------------------------------------------- |
+| `0`       | Counted                                     |
+| `1`       | A path is no directory, or the count failed |
+| `2`       | The command line is wrong                   |
 
 Every path is checked before anything is printed. A scan that matched no
 file still prints the header and says so on stderr; a directory that cannot
@@ -87,14 +87,14 @@ the report and nothing else.
 
 ## Output formats
 
-| Format     | For          | Numbers        | Ends with               |
-| ---------- | ------------ | -------------- | ----------------------- |
+| Format     | For          | Numbers          | Ends with              |
+| ---------- | ------------ | ---------------- | ---------------------- |
 | `table`    | the terminal | grouped, aligned | a `TOTAL` row          |
 | `markdown` | documents    | grouped, aligned | a `TOTAL` row          |
-| `tsv`      | scripts      | exact          | nothing after the rows  |
-| `csv`      | spreadsheets | exact          | nothing after the rows  |
-| `json`     | tooling      | exact, numeric | nothing after the rows  |
-| `jsonl`    | streaming    | exact, numeric | nothing after the rows  |
+| `tsv`      | scripts      | exact            | nothing after the rows |
+| `csv`      | spreadsheets | exact            | nothing after the rows |
+| `json`     | tooling      | exact, numeric   | nothing after the rows |
+| `jsonl`    | streaming    | exact, numeric   | nothing after the rows |
 
 ```json
 [

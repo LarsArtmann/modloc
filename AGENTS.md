@@ -37,13 +37,13 @@ silently builds without it.
 
 ## Architecture map
 
-| Package          | Owns                                                                                                  |
-| ---------------- | ----------------------------------------------------------------------------------------------------- |
-| `cmd/modloc`     | the entry point and the two stamps the linker sets (`version`, `commit`)                              |
-| `internal/loc`   | the domain: what a logical module is, how files are attributed, `Scan`. Depends on nothing            |
-| `internal/scc`   | runs the `scc` binary and reads its JSON. The only place that knows `scc`                            |
-| `internal/render`| the seven output formats. The only place that knows go-output                                         |
-| `internal/cli`   | cmdguard wiring, path validation, notices, exit codes. Composes the three above                      |
+| Package           | Owns                                                                                       |
+| ----------------- | ------------------------------------------------------------------------------------------ |
+| `cmd/modloc`      | the entry point and the two stamps the linker sets (`version`, `commit`)                   |
+| `internal/loc`    | the domain: what a logical module is, how files are attributed, `Scan`. Depends on nothing |
+| `internal/scc`    | runs the `scc` binary and reads its JSON. The only place that knows `scc`                  |
+| `internal/render` | the seven output formats. The only place that knows go-output                              |
+| `internal/cli`    | cmdguard wiring, path validation, notices, exit codes. Composes the three above            |
 
 A change to how files are attributed belongs in `internal/loc`, a change to a
 flag or an exit code in `internal/cli`, a change to a format in

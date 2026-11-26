@@ -23,7 +23,7 @@
       ...
     }:
     let
-      lib = nixpkgs.lib;
+      inherit (nixpkgs) lib;
       packageSrc = lib.fileset.toSource {
         root = ./.;
         fileset = lib.fileset.gitTracked ./.;
