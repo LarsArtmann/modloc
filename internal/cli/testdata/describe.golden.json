@@ -1,0 +1,106 @@
+{
+  "schema_version": "1",
+  "name": "modloc",
+  "short": "Count lines of code per logical module instead of per repository.",
+  "long": "Count lines of code per logical module instead of per repository.\n\nA logical module is the nearest directory holding go.mod (Go) or Cargo.toml\n(Rust). Every file counts toward the closest module above it, so nested\nmodules never add to the module that encloses them. With no <repo>, the\ncurrent directory is scanned.",
+  "flags": [
+    {
+      "name": "color",
+      "type": "string",
+      "default": "auto",
+      "usage": "Colors of the table and Markdown output (auto, always, never)",
+      "values": [
+        "auto",
+        "always",
+        "never"
+      ]
+    },
+    {
+      "name": "format",
+      "shorthand": "f",
+      "type": "string",
+      "default": "auto",
+      "usage": "Output format (auto, table, tsv, csv, json, jsonl, markdown); auto is table on a terminal and tsv when piped",
+      "values": [
+        "auto",
+        "table",
+        "tsv",
+        "csv",
+        "json",
+        "jsonl",
+        "markdown"
+      ]
+    },
+    {
+      "name": "help",
+      "shorthand": "h",
+      "type": "bool",
+      "default": "false",
+      "usage": "help for modloc"
+    },
+    {
+      "name": "language",
+      "shorthand": "l",
+      "type": "string",
+      "default": "go",
+      "usage": "Language to count (go, rust): its files, and the modules its marker declares (go.mod, Cargo.toml)",
+      "values": [
+        "go",
+        "rust"
+      ]
+    },
+    {
+      "name": "no-color",
+      "type": "bool",
+      "default": "false",
+      "usage": "Disable colored output (also respected via NO_COLOR env var)"
+    }
+  ],
+  "commands": [
+    {
+      "name": "doctor",
+      "path": "modloc doctor",
+      "short": "Check that modloc can count: locate scc and print its version",
+      "flags": [
+        {
+          "name": "color",
+          "type": "string",
+          "default": "auto",
+          "usage": "Colors of the table and Markdown output (auto, always, never)",
+          "inherited": true
+        },
+        {
+          "name": "format",
+          "shorthand": "f",
+          "type": "string",
+          "default": "auto",
+          "usage": "Output format (auto, table, tsv, csv, json, jsonl, markdown); auto is table on a terminal and tsv when piped",
+          "inherited": true
+        },
+        {
+          "name": "help",
+          "shorthand": "h",
+          "type": "bool",
+          "default": "false",
+          "usage": "help for doctor"
+        },
+        {
+          "name": "language",
+          "shorthand": "l",
+          "type": "string",
+          "default": "go",
+          "usage": "Language to count (go, rust): its files, and the modules its marker declares (go.mod, Cargo.toml)",
+          "inherited": true
+        },
+        {
+          "name": "no-color",
+          "type": "bool",
+          "default": "false",
+          "usage": "Disable colored output (also respected via NO_COLOR env var)",
+          "inherited": true
+        }
+      ],
+      "commands": []
+    }
+  ]
+}

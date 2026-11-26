@@ -29,7 +29,7 @@ var _ = Describe("modloc", func() {
 			It("labels the rows with the path exactly as it was given", func() {
 				enter(filepath.Dir(h.root))
 
-				Expect(h.run("./"+filepath.Base(h.root))).To(Equal(0))
+				Expect(h.run("./" + filepath.Base(h.root))).To(Equal(0))
 				Expect(h.report.String()).To(Equal(tsv("./"+filepath.Base(h.root), goRows...)))
 			})
 
