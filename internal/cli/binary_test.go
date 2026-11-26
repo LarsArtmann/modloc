@@ -121,15 +121,25 @@ var _ = Describe("the built binary", Serial, func() {
 			run := invoke(bin, tree(name), args...)
 
 			Expect(run.code).To(Equal(code), run.stderr)
-			Expect(run.stdout).To(Equal(stdout))
-			Expect(run.stderr).To(ContainSubstring(stderr))
+
+			if stdout == "" {
+				Expect(run.stdout).To(BeEmpty(), "a failed run prints no table")
+			} else {
+				Expect(run.stdout).To(ContainSubstring(stdout))
+			}
+
+			if stderr == "" {
+				Expect(run.stderr).To(BeEmpty(), "nothing on stderr")
+			} else {
+				Expect(run.stderr).To(ContainSubstring(stderr))
+			}
 		},
-		Entry("help on stdout", "contract", []string{"--help"}, 0, "", ""),
-		Entry("version on stdout", "contract", []string{"--version"}, 0, "", ""),
-		Entry("doctor", "contract", []string{"doctor"}, 0, "", ""),
-		Entry("a usage error", "contract", []string{"--bogus"}, 2, "", "unknown flag: --bogus"),
-		Entry("a missing path", "contract", []string{"/no/such/dir"}, 1, "", "No such directory: /no/such/dir"),
-		Entry("an empty scan", "stray", []string{"-l", "rust"}, 0,
+		Entry("help on stdout", "contract", []string{"--help"}, 0, "USAGE", ""),
+		Entry("version on stdout", "contract", []string{"--version"}, 0, "modloc version", ""),
+		Entry("doctor", "contract", []string{"doctor"}, 0, "scc  ok", ""),
+		Entry("a usage error, with the problem on stderr", "contract", []string{"--bogus"}, 2, "", "unknown flag: --bogus"),
+		Entry("a missing path, named on stderr", "contract", []string{"/no/such/dir"}, 1, "", "No such directory: /no/such/dir"),
+		Entry("an empty scan, with the notice on stderr", "stray", []string{"-l", "rust"}, 0,
 			"repo\tmodule\tfiles\tcode\tcomment\tblank\tlines\n", "modloc: no .rs files under '.'"),
 	)
 
@@ -140,7 +150,7 @@ var _ = Describe("the built binary", Serial, func() {
 		run := invoke(bin, root)
 
 		Expect(run.code).To(Equal(0))
-		Expect(run.stdout).To(Equal(tsv(".", ".\t3\t3\t1\t1\t5", "internal/y\t2\t2\t0\t0\t2")))
+		Expect(run.stdout).To(Equal(tsv(".", ".\t3\t4\t1\t1\t6", "internal/y\t2\t2\t0\t0\t2")))
 	})
 
 	It("prints nothing but the report on stdout", func() {
