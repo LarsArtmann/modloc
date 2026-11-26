@@ -54,7 +54,7 @@
         inherit systems;
         src = packageSrc;
         subPackages = [ "cmd/modloc" ];
-        vendorHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+        vendorHash = "sha256-tOVZYhI3tiSBPm8k0ARaimrdTAaKDh12XEEmlYaSQYE=";
         enableCompletions = true;
         completionStyle = "subcommand";
         lintAsCheck = true;
@@ -99,7 +99,7 @@
       };
 
       perSystem =
-        { self', ... }:
+        { self', system, ... }:
         {
           # Runs the package the way a host does. This derivation has no scc,
           # so counting works only through the wrapper the package carries.
