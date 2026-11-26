@@ -123,8 +123,6 @@ BuildFlow's rule is fixed, filed, or recorded; these are recorded.
   character narrower than its columns; valid Markdown, cosmetic.
 - **`encoding/json/v2` has no `json.NewDecoder`.** Decoding from a reader is
   `json.UnmarshalDecode(jsontext.NewDecoder(r), &v)`.
-- **`go.mod` says `go 1.27` but the standard library is 1.27.3 here**, and
-  `nixpkgs` `go_1_27` is the same version.
 - **The auto-commit daemon** commits whatever the working tree holds, and
   its pre-commit hook reformats files (golines) between a read and a write.
   Edit with the edit tool on a fresh read, never with a search-and-replace

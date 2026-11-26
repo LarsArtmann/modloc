@@ -52,12 +52,15 @@ Rules for this table:
 
 ## Wiring order
 
-1. `cmdguard` per the cmdguard skill: `NewCLI` with the root flags, the root
+1. **root**: `go get github.com/larsartmann/cmdguard/v5@v5.1.0` and
+   `github.com/larsartmann/go-output@v0.38.7` with its `delimited`,
+   `markdown` and `table` sub-modules.
+2. `cmdguard` per the cmdguard skill: `NewCLI` with the root flags, the root
    command running the scan, the battery on.
-2. `go-output`: the blank imports in `internal/render` register the renderers.
-3. `go-nix-helpers` `go-standard` in `flake.nix`; public dependencies only,
+3. `go-output`: the blank imports in `internal/render` register the renderers.
+4. `go-nix-helpers` `go-standard` in `flake.nix`; public dependencies only,
    so no `nix-private-go-repos` machinery.
-4. BuildFlow: `.buildflow.yml` marker, then `buildflow precommit install`.
+5. BuildFlow: `.buildflow.yml` marker, then `buildflow precommit install`.
 5. Registered with `meta`: `meta set --project modloc --tags cli,go,tool,developer-tools,static-analysis`.
 
 ## Decision log
