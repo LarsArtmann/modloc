@@ -198,10 +198,10 @@ var _ = Describe("Counter", func() {
 			files, err := scc.New(scc.WithStderr(io.Discard)).CountFiles(context.Background(), dir)
 
 			Expect(err).NotTo(HaveOccurred())
-			Expect(files).To(Equal([]loc.File{
-				{Path: "a.go", Lines: 4, Code: 2, Comment: 1, Blank: 1},
-				{Path: "sub/b.go", Lines: 1, Code: 1},
-			}))
+			Expect(files).To(ConsistOf(
+				loc.File{Path: "a.go", Lines: 4, Code: 2, Comment: 1, Blank: 1},
+				loc.File{Path: "sub/b.go", Lines: 1, Code: 1},
+			), "scc walks a repository concurrently, so its order is no contract")
 		})
 
 		It("counts lines so that code, comments and blanks add up to lines", func() {
