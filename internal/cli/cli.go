@@ -36,12 +36,11 @@ var (
 // Config carries the root command's flags. Each help names its allowed
 // values: cmdguard lists them for Enum-typed flags only, and a reader of
 // --help should never have to guess.
-//
 
 type Config struct {
-	Language string `default:"go"   flag:"language" help:"Language to count (go, rust): its files, and the modules its marker declares (go.mod, Cargo.toml)"            short:"l" values:"go,rust"`
+	Language string `default:"go"   flag:"language" help:"Language to count (go, rust): its files, and the modules its marker declares (go.mod, Cargo.toml)" short:"l" values:"go,rust"`
 	Format   string `default:"auto" flag:"format"   help:"Output format (auto, table, tsv, csv, json, jsonl, markdown); auto is table on a terminal and tsv when piped" short:"f" values:"auto,table,tsv,csv,json,jsonl,markdown"`
-	Color    string `default:"auto" flag:"color"    help:"Colors of the table output (auto, always, never)"                                                                       values:"auto,always,never"`
+	Color    string `default:"auto" flag:"color"    help:"Colors of the table and Markdown output (auto, always, never)"                                                         values:"auto,always,never"`
 }
 
 // Probe reports which scc will run: its path and its version line.
@@ -100,7 +99,12 @@ func Run(ctx context.Context, args []string, version, commit string) error {
 
 // Build assembles the command tree: the scanning root and the doctor command.
 func Build(env Environment) (*v5.CLI[Config], error) {
-	cli, err := v5.NewCLI(Name, long, Config{}, options(env.Version, env.Commit)...)
+	cli, err := v5.NewCLI(
+		Name,
+		short,
+		Config{},
+		append(options(env.Version, env.Commit), v5.WithCLILong(long))...,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -124,10 +128,12 @@ func Build(env Environment) (*v5.CLI[Config], error) {
 	return cli, nil
 }
 
+// short is the one-line description: the first sentence of --help and the
+// summary agents read from the describe contract.
+const short = "Count lines of code per logical module instead of per repository."
+
 // long is the root command's description in --help.
-const long = "Count lines of code per logical module instead of per repository.\n" +
-	"\n" +
-	"A logical module is the nearest directory holding go.mod (Go) or Cargo.toml\n" +
+const long = "A logical module is the nearest directory holding go.mod (Go) or Cargo.toml\n" +
 	"(Rust). Every file counts toward the closest module above it, so nested\n" +
 	"modules never add to the module that encloses them. With no <repo>, the\n" +
 	"current directory is scanned."
@@ -188,8 +194,9 @@ func Execute(cli *v5.CLI[Config], ctx context.Context, args []string) error {
 }
 
 // isUsageError reports whether err means the command was called wrong: a
-// malformed command line, or cmdguard's binding layer rejecting a flag value
-// (a bad enum, a number out of bounds). Anything else is a real failure.
+// malformed command line, or cmdguard's binding layer rejecting a flag value.
+// modloc's flags are strings with allowed values, so the enum check is the
+// one binding sentinel its flags can raise.
 func isUsageError(err error) bool {
 	if errors.Is(err, errFlagUsage) {
 		return true
@@ -198,14 +205,6 @@ func isUsageError(err error) bool {
 	for _, sentinel := range []error{
 		v5.ErrFlagParseFailed,
 		v5.ErrInvalidEnum,
-		v5.ErrTypeConversion,
-		v5.ErrValueOutOfRange,
-		v5.ErrValueTooShort,
-		v5.ErrValueTooLong,
-		v5.ErrValueTooSmall,
-		v5.ErrValueTooLarge,
-		v5.ErrValuePatternMismatch,
-		v5.ErrValueEmpty,
 	} {
 		if errors.Is(err, sentinel) {
 			return true
