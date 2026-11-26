@@ -11,8 +11,8 @@ import (
 	"github.com/dustin/go-humanize/english"
 	"github.com/larsartmann/go-output"
 	_ "github.com/larsartmann/go-output/delimited" // registers csv and tsv
-	_ "github.com/larsartmann/go-output/markdown"  // registers markdown
-	_ "github.com/larsartmann/go-output/table"     // registers the terminal table
+	"github.com/larsartmann/go-output/markdown"
+	_ "github.com/larsartmann/go-output/table" // registers the terminal table
 	"github.com/larsartmann/modloc/internal/loc"
 )
 
@@ -34,14 +34,17 @@ func Columns() []string {
 
 // Write renders the reports in the given output. The rows of every report
 // follow each other, repositories in the order they were given and each
-// one's modules by size. color only affects the table output.
+// one's modules by size. color only affects the two formats people read
+// (table, markdown); the data formats never carry escape codes.
 func Write(w io.Writer, reports []loc.Report, out Output, color output.ColorMode) error {
 	switch out {
 	case OutputJSON:
 		return writeJSON(w, rows(reports))
 	case OutputJSONL:
 		return writeJSONL(w, rows(reports))
-	case OutputTable, OutputTSV, OutputCSV, OutputMarkdown:
+	case OutputMarkdown:
+		return writeMarkdown(w, table(reports, out), color)
+	case OutputTable, OutputTSV, OutputCSV:
 		return output.RenderTable(
 			table(reports, out),
 			out.wireFormat(),
@@ -50,6 +53,20 @@ func Write(w io.Writer, reports []loc.Report, out Output, color output.ColorMode
 	default:
 		return fmt.Errorf("%w: %q", ErrUnknownFormat, out)
 	}
+}
+
+// writeMarkdown writes the table as a GitHub-flavored Markdown table with
+// its numeric columns right-aligned, through the alignment markers rather
+// than padding, so the alignment survives any renderer and edits.
+func writeMarkdown(w io.Writer, data *output.Table, color output.ColorMode) error {
+	md := markdown.NewMarkdownTableFromTable(data)
+	md.SetColorMode(color)
+
+	for column := firstNumberColumn; column < columnCount; column++ {
+		md.SetAlign(column, markdown.AlignRight)
+	}
+
+	return output.WriteRenderedRawFrom(w, md.Render, "markdown", "markdown")
 }
 
 // table builds the go-output table for an output: plain numbers and no
@@ -141,11 +158,18 @@ func footer(reports []loc.Report) []string {
 	}
 }
 
-// alignNumbers left-pads every numeric column to its widest cell. go-output
-// tables carry strings only, so padding is what makes counts line up on
-// their right edge in a terminal.
+// alignNumbers left-pads every numeric cell to the width of its column. The
+// terminal table carries strings only and places every cell at its column's
+// left edge, so padding is what lines counts up on their right edge, under
+// the last letter of their header. A header wider than every count therefore
+// counts for the width too: without it, small counts would sit left under a
+// wide header while large ones lined up on the right.
 func alignNumbers(cellRows [][]string) [][]string {
 	var widths [columnCount]int
+
+	for column, header := range Columns() {
+		widths[column] = len(header)
+	}
 
 	for _, cellRow := range cellRows {
 		for column := firstNumberColumn; column < len(cellRow); column++ {
