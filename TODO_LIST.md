@@ -71,6 +71,15 @@ Ordered by impact; every row was open in the tree on 2026-11-27.
 - [ ] **README sample.** Once `v0.1.0` exists, show a versioned install
       (`nix run github:LarsArtmann/modloc/v0.1.0`); today the example
       tracks `master`.
+- [ ] **The harness in CI.** `tests/negative/run.sh` runs locally only;
+      add its fast cases to `.forgejo/workflows/ci.yml` once the stale case
+      is fixed and the run time is known.
+- [ ] **A status legend in `FEATURES.md`.** `docs-gates` skips its
+      vocabulary gate for FEATURES.md ("no status legend section, not
+      judged"); a legend section lets the gate check the status words.
+- [ ] **Annotate the reports this work resolves** (repo: nixos-modules):
+      `docs/status/2026-11-26_17-53_modloc-*.md`, section f, rows 1, 2, 3,
+      25 and the modloc half of 31.
 
 ## File upstream
 
@@ -96,3 +105,6 @@ row was verified in modloc's tree; none is in the other repository's
       auto-commit daemon's hook reformats between read and write; a spec
       that depends on an external tool's order is flaky; a root command
       outside the middleware chain.
+- [ ] (repo: docs-gates) A gate for a paragraph that appears twice in a
+      living doc: a multi-edit session duplicated the CI paragraph of
+      `AGENTS.md` on 2026-11-27 and every gate stayed green.
