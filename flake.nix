@@ -126,7 +126,7 @@
             env -i $modloc --bogus 2> usage.err || test "$?" = 2
             grep -F 'unknown flag: --bogus' usage.err
 
-            for completion in bash-completion/completions/modloc fish/vendor_completions.d/modloc.fish zsh/site-functions/_modloc; do
+            for completion in bash-completion/completions/modloc.bash fish/vendor_completions.d/modloc.fish zsh/site-functions/_modloc; do
               test -f "${self'.packages.default}/share/$completion" || {
                 echo "modloc package check: missing completion $completion" >&2
                 exit 1
