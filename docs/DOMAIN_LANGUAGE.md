@@ -47,5 +47,4 @@ a program as a **data format**.
 | --------------------- | --------------------------------------------------------------------------------------------------------- |
 | count vs report       | `scc` counts files; modloc attributes them. A file's numbers are `scc`'s, a module's numbers are modloc's |
 | before vs after print | Every path is validated before the header is printed; a counter failure after that is exit `1`            |
-| terminal vs pipe        | The same command is a picture on a terminal and data in a pipe (`auto`), never a mixture                  |
-| module vs repository    | A nested module's files belong to that module alone; the enclosing module's row does not contain them    |
+| terminal vs pipe      | The same command is a picture on a terminal and data in a pipe (`auto`), never a mixture                  |

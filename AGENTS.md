@@ -5,14 +5,18 @@ modloc counts lines of code per **logical module** (the nearest `go.mod` or
 built and checked with BuildFlow. `go.mod` has the dependency set and
 `STACK.md` the reason for each; `FEATURES.md` the inventory.
 
-## Remotes (since 2026-11-26)
+## Remotes
 
 Forgejo-canonical (fleet pattern): `origin` =
 `forgejo@evo-x2.home.lan:lars/modloc.git`, `github` =
-`git@github.com:LarsArtmann/modloc.git` is a PUBLIC Forgejo push mirror (8h +
-sync_on_commit, hand-attached at creation; owned idempotently by
-`forgejo.canonicalRepos` in SystemNix from the next deploy). Both repos
-PUBLIC. Push to `origin` first; the mirror follows.
+`git@github.com:LarsArtmann/modloc.git` is a PUBLIC Forgejo push mirror.
+Push to `origin` first; the mirror follows.
+
+CI therefore lives in `.forgejo/workflows/ci.yml` (runner label `native`),
+never in `.github/workflows/`: the token of the mirror has no `workflow`
+scope (SystemNix, `platforms/nixos/system/configuration.nix`, the entry for
+`modloc`), so a commit that adds a workflow file there is refused by GitHub
+and the mirror stalls.
 
 CI therefore lives in `.forgejo/workflows/ci.yml` (runner label `native`),
 never in `.github/workflows/`: the token of the mirror has no `workflow`
@@ -27,13 +31,18 @@ go build ./...    # build
 go test ./...     # behavior specs (Ginkgo); specs needing scc skip without it
 buildflow         # the quality gate: lint, format, tests, repairs
 nix build         # hermetic build; the package wraps scc onto its PATH
-nix flake check   # package, specs with the real scc, both Nix modules, format
+nix flake check   # package, specs with the real scc, both Nix modules, format; x86_64-linux only
+                  # (add --all-systems --no-build to evaluate aarch64-linux)
 nix run . -- -l rust ~/projects/collector-utils
 ```
 
 Nix sees only git-tracked files (`src = lib.fileset.gitTracked ./.`):
 `git add` a new file before `nix build` or `nix flake check`, or the flake
 silently builds without it.
+
+The repo gates BuildFlow does not own: `bash scripts/test-count.sh` (the
+spec count in `FEATURES.md`), `bash scripts/coverage-floor.sh` (80 %) and
+`stack-selection/scripts/stack-drift-check.sh .`. CI runs all three.
 
 ## Architecture map
 
@@ -42,7 +51,7 @@ silently builds without it.
 | `cmd/modloc`      | the entry point and the two stamps the linker sets (`version`, `commit`)                   |
 | `internal/loc`    | the domain: what a logical module is, how files are attributed, `Scan`. Depends on nothing |
 | `internal/scc`    | runs the `scc` binary and reads its JSON. The only place that knows `scc`                  |
-| `internal/render` | the seven output formats. The only place that knows go-output                              |
+| `internal/render` | the six output formats (seven `--format` values with `auto`). The only place that knows go-output |
 | `internal/cli`    | cmdguard wiring, path validation, notices, exit codes. Composes the three above            |
 
 A change to how files are attributed belongs in `internal/loc`, a change to a
@@ -60,6 +69,8 @@ flag or an exit code in `internal/cli`, a change to a format in
 - **`scc` is a process, never a library.** Its module pulls json-iterator and
   zerolog (both banned by how-to-golang) and its package-global API is under
   change. Running the binary keeps language coverage on the nixpkgs channel.
+  The JSON shape modloc decodes is pinned by `internal/scc/testdata/by-file.json`,
+  real `scc` 4.1.0 output; `modloc doctor` prints the version that runs.
 - **Every path is checked before anything is printed**, and no path means the
   current directory: a bare `modloc` is the common invocation, and the first
   live run of the bash predecessor printed a bare header and exited 0.
@@ -79,11 +90,11 @@ flag or an exit code in `internal/cli`, a change to a format in
 
 BuildFlow's rule is fixed, filed, or recorded; these are recorded.
 
-- **erraudit (45 warnings: "project enforces samber/oops", "returns bare
+- **erraudit (warnings: "project enforces samber/oops", "returns bare
   error interface").** modloc follows the how-to-golang rule for errors at
   this size: package-level sentinels and `fmt.Errorf` with `%w`. `oops`
   would be a dependency for error classes nothing here needs.
-- **go-auto-upgrade (11 suggestions: `samber/lo`).** The loops are three to
+- **go-auto-upgrade (suggestions: `samber/lo`).** The loops are three to
   five lines each, two sit in test helpers; a new dependency with its own
   graph is not worth them (see `STACK.md`).
 - **library-policy (1: cobra, "USE charm.land/fang/v2 with cobra").** Every
@@ -133,3 +144,13 @@ BuildFlow's rule is fixed, filed, or recorded; these are recorded.
   verdict, and `-s <tool> --fix` for one tool.
 - **BuildFlow's format step does not run golines or gofumpt**; the lint
   step reports both, and its repair step applies them.
+- **go-standard installs the bash completion as `modloc.bash`**, not
+  `modloc` (zsh and fish keep the bare name). A check for the file by the
+  bare name fails after everything else in the package is right.
+- **A NixOS module check must count the package, never compare the list.**
+  `environment.systemPackages` also holds the host's own tools, so
+  `tests/modules.nix` asserts "exactly once when enabled, absent when
+  disabled".
+- **`**/testdata/**` is excluded from dprint on purpose.**
+  `describe.golden.json` is compared byte for byte; a formatter pass over
+  it would fail the contract spec.

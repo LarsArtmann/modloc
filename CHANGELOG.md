@@ -27,3 +27,12 @@ Semantic Versioning.
   `nixosModules.modloc` and `homeManagerModules.modloc`
   (`programs.modloc.enable`); eval and runtime checks.
 - 156 behavior specs (Ginkgo) over 94.2 % of the statements.
+- Notices on stderr, never on stdout: an empty scan names the command that
+  finds the other language, and every directory that could not be read is
+  named while the rest of the repository is still counted.
+- `vendor`, `target`, `node_modules` and `.git` are never modules, whatever
+  marker they hold; the repository root is never pruned.
+- A CI workflow on Forgejo Actions: the BuildFlow gate, a secret scan, the
+  `STACK.md` drift check, the spec-count gate and a coverage floor of 80 %.
+- `modloc completion` for bash, zsh and fish, installed with the Nix
+  package.
