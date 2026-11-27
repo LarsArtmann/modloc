@@ -40,6 +40,6 @@ become a task.
 ## Open questions
 
 - **Does the bash module stay one release as a fallback** after the SystemNix
-cutover, or is it retired in the same cycle? (nixos-modules,
+  cutover, or is it retired in the same cycle? (nixos-modules,
   `modules/modloc/README.md`, "Successor and cutover".)
 - **When does SystemNix switch:** now, or once `v0.1.0` is tagged?

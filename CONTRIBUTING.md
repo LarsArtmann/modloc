@@ -42,11 +42,14 @@ change of the contract.
 `AGENTS.md`, `STACK.md` and `docs/DOMAIN_LANGUAGE.md` are living documents.
 Each fact lives in one of them; when a fact changes, update the document
 that owns it. `bash scripts/test-count.sh` checks that the spec count in
-`FEATURES.md` is the real one, and
+`FEATURES.md` is the real one, `bash scripts/coverage-floor.sh` that the
+statement coverage stays at 80 % or above, and
 `stack-selection/scripts/stack-drift-check.sh .` checks that every direct
 first-party dependency has a row in `STACK.md`.
 
 ## Reporting issues
 
-Please use the issue tracker. Security problems go the way
+Please use the issue tracker of the Forgejo repository (`origin`): GitHub is
+a push mirror, so an issue or pull request opened there is not where the
+work is tracked. Security problems go the way
 [SECURITY.md](SECURITY.md) describes, never through a public issue.

@@ -38,7 +38,7 @@ a program as a **data format**.
 | Contract           | The machine-readable description of the command line (`modloc describe`): every flag, its default, its allowed values and every command. Golden-pinned            |
 | Usage error        | A command line modloc cannot act on: a wrong value, an unknown flag, a missing value. Exits `2` before anything is scanned                                        |
 | Stamp              | What a build knows about itself: the version and the commit `--version` prints                                                                                    |
-| Doctor              | The command that names the counter before a scan: the path of the `scc` that will run and its version line, or the reason none can (missing, failing)                        |
+| Doctor             | The command that names the counter before a scan: the path of the `scc` that will run and its version line, or the reason none can (missing, failing)             |
 | VACUOUS            | A spec that cannot decide in this sandbox (a directory the process can read anyway, no `scc` installed) and skips, naming the reason, instead of passing silently |
 
 ## Bound to one side
