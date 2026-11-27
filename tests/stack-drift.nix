@@ -35,15 +35,23 @@ let
   excluded = section "Deliberately excluded" stackText;
 
   # library is the first path segment of a first-party module a go.mod line
-  # requires directly, or null for every other line.
+  # requires directly, or null for every other line. A line of the require
+  # block and a one-line require both read "github.com/… <version>" once the
+  # keyword and the blanks are gone.
   library =
     line:
     let
-      match = builtins.match "[[:space:]]*(require[[:space:]]+)?github\\.com/larsartmann/([^[:space:]/]+)[^[:space:]]*[[:space:]]+v[^[:space:]]+" line;
+      match = builtins.match "github\\.com/larsartmann/([^[:space:]/]+)[^[:space:]]*[[:space:]]+v[^[:space:]]+" (
+        lib.trim (lib.removePrefix "require " (lib.trim line))
+      );
     in
     if lib.hasInfix indirect line || match == null then null else builtins.head match;
 
-  libraries = lib.naturalSort (lib.unique (lib.filter (name: name != null) (map library (lib.splitString "\n" (builtins.readFile goMod)))));
+  libraries = lib.naturalSort (
+    lib.unique (
+      lib.filter (name: name != null) (map library (lib.splitString "\n" (builtins.readFile goMod)))
+    )
+  );
 
   undeclared = lib.filter (name: !lib.hasInfix name chosen) libraries;
   contradictions = lib.filter (name: lib.hasInfix name excluded) undeclared;
@@ -52,8 +60,9 @@ let
   findings =
     lib.optional (contradictions != [ ])
       "required by go.mod but listed as deliberately excluded: ${lib.concatStringsSep ", " contradictions}"
-    ++ lib.optional (nowhere != [ ])
-      "required by go.mod but named nowhere in the Chosen foundation section: ${lib.concatStringsSep ", " nowhere}";
+    ++
+      lib.optional (nowhere != [ ])
+        "required by go.mod but named nowhere in the Chosen foundation section: ${lib.concatStringsSep ", " nowhere}";
 in
 lib.throwIfNot (findings == [ ]) "modloc stack drift: ${lib.concatStringsSep "; " findings}" (
   pkgs.runCommand "modloc-stack-drift-check" { } ''

@@ -56,15 +56,18 @@
           # Both remotes are public and a daemon commits whatever lies around,
           # so every tracked file is scanned for secrets. --no-git: the store
           # copy carries no history.
-          secrets = nixpkgs.legacyPackages.${system}.runCommand "modloc-secrets-check" {
-            nativeBuildInputs = [ nixpkgs.legacyPackages.${system}.gitleaks ];
-          } ''
-            gitleaks detect --no-git --source ${packageSrc} --redact --no-banner >gitleaks.log 2>&1 && touch $out || {
-              cat gitleaks.log >&2
-              echo "modloc secrets check failed: gitleaks found a secret in the source tree" >&2
-              exit 1
-            }
-          '';
+          secrets =
+            nixpkgs.legacyPackages.${system}.runCommand "modloc-secrets-check"
+              {
+                nativeBuildInputs = [ nixpkgs.legacyPackages.${system}.gitleaks ];
+              }
+              ''
+                gitleaks detect --no-git --source ${packageSrc} --redact --no-banner >gitleaks.log 2>&1 && touch $out || {
+                  cat gitleaks.log >&2
+                  echo "modloc secrets check failed: gitleaks found a secret in the source tree" >&2
+                  exit 1
+                }
+              '';
         };
     in
     flake-parts.lib.mkFlake { inherit inputs; } {
@@ -127,11 +130,13 @@
           # Runs the package the way a host does. This derivation has no scc,
           # so counting works only through the wrapper the package carries.
           checks.package-runtime = nixpkgs.legacyPackages.${system}.runCommand "modloc-package-runtime" { } ''
-            bash ${./tests/package-runtime.sh} ${lib.escapeShellArgs [
-              self'.packages.default
-              version
-              commit
-            ]}
+            bash ${./tests/package-runtime.sh} ${
+              lib.escapeShellArgs [
+                self'.packages.default
+                version
+                commit
+              ]
+            }
             touch $out
           '';
         };

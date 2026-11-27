@@ -1,10 +1,16 @@
 name: CI
 
-# Forgejo Actions, native runner (this repository is Forgejo-canonical; see
-# AGENTS.md, "Remotes"). One BuildFlow full gate covers the build, vet, the
-# race-enabled tests, golangci-lint, govulncheck, cmdguard-lint and the Nix
-# flake checks. The second step runs the gates BuildFlow does not own: the
-# secret scan, the STACK.md drift check, and this repository's two gates.
+# Forgejo Actions on the native runner (this repository is Forgejo-canonical;
+# see AGENTS.md, "Remotes"). Every step is hermetic Nix: the flake's dev shell
+# for the race-enabled specs, then the flake checks, which cover the package
+# (its build runs the specs with the real scc), lint, format, both modules,
+# the wrapped binary, the STACK.md drift and the secret scan. Last come the
+# gates BuildFlow does not own: the spec count in FEATURES.md and the
+# coverage floor.
+#
+# BuildFlow is not run here. It is private on GitHub and the runner has no
+# token for it; its full gate is the local loop (`buildflow --build-mode
+# full`) before a push.
 on:
   push:
     branches: [master]
@@ -16,34 +22,26 @@ permissions:
 
 jobs:
   gate:
-    name: buildflow full gate + repo gates
+    name: flake checks + repo gates
     runs-on: native
+    timeout-minutes: 30
+    env:
+      # Never download a toolchain into a module cache the runner's user cannot write.
+      GOTOOLCHAIN: local
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
 
-      - name: Install BuildFlow
-        run: |
-          nix --accept-flake-config profile install github:LarsArtmann/BuildFlow/28ad281b1cdf2d640fbf7d9d98dcf78256d5776d
-          echo "$HOME/.nix-profile/bin" >> "$GITHUB_PATH"
+      - name: Race-enabled specs
+        run: nix develop --command go test -race -count=1 ./...
 
-      - name: BuildFlow full gate
-        env:
-          BUILDFLOW_TELEMETRY_DISABLED: "true"
-        run: buildflow --build-mode full
-
-      - name: Secret scan
-        env:
-          BUILDFLOW_TELEMETRY_DISABLED: "true"
-        run: buildflow -s gitleaks
-
-      - name: STACK.md drift check
-        run: bash "$HOME/.agents/skills/stack-selection/scripts/stack-drift-check.sh" .
+      - name: Nix flake check
+        run: nix flake check -L
 
       - name: Spec-count gate
         run: bash scripts/test-count.sh
 
       - name: Coverage floor
-        run: bash scripts/coverage-floor.sh
+        run: nix develop --command bash scripts/coverage-floor.sh
