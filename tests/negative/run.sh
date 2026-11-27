@@ -136,7 +136,7 @@ case_column_width_ignores_the_header() {
 		'writes a table with grouped, right-aligned numbers that ends in a TOTAL row' \
 		internal/render/render.go \
 		'widest := width' \
-		'widest := 0'
+		'widest := width * 0'
 }
 
 case_nested_modules_count_toward_their_parent() {
@@ -200,15 +200,18 @@ case_a_secret_in_the_tree() {
 		'modloc secrets check failed' \
 		README.md \
 		'# modloc' \
-		$'# modloc\n\naws_secret_access_key = wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY'
+		$'# modloc\n\ngithub_token = ghp_''''_zK9mQ2xR7tW4bN8cV1dK6fH3jL0pS5yGuHi6'
 }
 
 # The slow cases build the package from the mutated tree.
 case_package_without_the_scc_wrapper() {
+	# The wrapper line, as it stands in the Nix string.
+	# shellcheck disable=SC2016
+	local wrapper='wrapProgram $out/bin/modloc --prefix PATH : ${lib.makeBinPath [ pkgs.scc ]}'
 	breaks slow nix-build package-runtime \
 		'modloc package check failed' \
 		flake.nix \
-		'wrapProgram $out/bin/modloc --prefix PATH : ${lib.makeBinPath [ pkgs.scc ]}' \ # shellcheck disable=SC2016 # the mutation is literal Nix code
+		"$wrapper" \
 		'true'
 }
 
@@ -267,7 +270,6 @@ verdict() {
 	fi
 }
 
-printf '%-14s %s\n' "$outcome" "${GROUP:-control}" "${NAME:-$label}"
 # The control: nothing is broken, everything passes.
 control=$(make_copy control)
 flake_checks=()
@@ -278,8 +280,8 @@ log="$WORK/control.log"
 code=0
 (
 	cd "$control" || exit 2
-	as_flake
-	go test -count=1 ./...
+	as_flake || exit 1
+	go test -count=1 ./... || exit 1
 	nix build --no-link -L "${flake_checks[@]}"
 ) >"$log" 2>&1 || code=$?
 if [ "$code" = 0 ]; then
