@@ -17,12 +17,14 @@ The shell carries the Go toolchain, `golangci-lint`, `govulncheck` and
 $ go build ./... && go vet ./...
 $ go test -race ./...
 $ buildflow            # lint, format, tests, repairs: the quality gate
-$ nix flake check      # the hermetic build, the specs, both Nix modules
+$ nix flake check      # the hermetic build, the specs, both Nix modules, STACK.md
+                      # drift, secrets, the wrapped binary
 ```
 
 BuildFlow owns linting, formatting and `go.mod` hygiene. Do not run a
 formatter or `go mod tidy` by hand: `buildflow format` and
-`buildflow -s gomod-check --fix` are the two commands.
+`buildflow -s gomod-check --fix` are the two commands. `buildflow` is the
+local loop; CI is hermetic Nix (`AGENTS.md`, "Remotes").
 
 ## Tests
 
@@ -30,6 +32,10 @@ Behavior specs with Ginkgo and Gomega, black-box (`package <name>_test`):
 one spec per observable behavior. A spec whose outcome depends on the
 sandbox (a directory it cannot read, `scc` being installed) reports VACUOUS
 and skips instead of passing silently.
+
+`bash tests/negative/run.sh` is the bite-proof: every case breaks one
+contract in a copy of the tree and requires the matching spec or check to
+fail. Run it after you add a spec or a check.
 
 `internal/cli/testdata/` holds the goldens: the command contract
 (`describe.golden.json`) and the TSV the bash `modloc` printed for five
