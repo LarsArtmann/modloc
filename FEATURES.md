@@ -3,7 +3,8 @@
 Honest inventory of what modloc does, by status. The source of truth is the
 code; every row says where it lives and what proves it. There is no
 BROKEN, PARTIALLY_FUNCTIONAL or DISABLED row: every shipped feature passed
-its specs and its Nix checks when this list was refreshed.
+its specs and its Nix checks when this list was refreshed; the one
+PARTIALLY_FUNCTIONAL row is the bite-proof harness, with its gap named.
 
 **Last refreshed:** 2026-11-27 · Crush (glm-5.4) docs-health audit · basis:
 `go test ./...` with coverage, `nix flake check`, and the built binary run in
@@ -65,11 +66,22 @@ statements. `bash scripts/test-count.sh` checks the first number.
 - `nixosModules.modloc` and `homeManagerModules.modloc`, both
   `programs.modloc.enable` with `package` defaulting to this flake's build.
 - Checks: the package build runs the specs with the real `scc`;
-  `package-runtime` runs the wrapped binary with an empty environment and
-  asserts its three completion files (`modloc.bash`, `_modloc`,
-  `modloc.fish`); the module checks evaluate both modules enabled and
-  disabled (`tests/modules.nix`): the package is on the list exactly once
-  when enabled and absent when disabled.
+  `package-runtime` (`tests/package-runtime.sh`) runs the wrapped binary with
+  an empty environment and pins the `scc` on its `PATH`, the version stamps,
+  the exit codes and the three completion files (`modloc.bash`, `_modloc`,
+  `modloc.fish`); `stack-drift` (`tests/stack-drift.nix`) fails when a
+  first-party module of `go.mod` has no row in `STACK.md`; `secrets` runs
+  `gitleaks` over the tracked tree; the module checks evaluate both modules
+  enabled and disabled (`tests/modules.nix`): the package is on the list
+  exactly once when enabled and absent when disabled.
+
+## PARTIALLY_FUNCTIONAL
+
+- The bite-proof harness `tests/negative/run.sh`: each case breaks one
+  contract in a copy of the tree and requires the matching spec or check to
+  fail. 14 cases; a run on 2026-11-27 took the 12 fast ones, 11 bit and
+  `cli/paths_checked_one_by_one` reported ANCHOR (the spec it expected to
+  fail did not); the two `SLOW=1` cases were not run.
 
 ## DEMAND_GATED
 

@@ -32,7 +32,13 @@ Semantic Versioning.
   named while the rest of the repository is still counted.
 - `vendor`, `target`, `node_modules` and `.git` are never modules, whatever
   marker they hold; the repository root is never pruned.
-- A CI workflow on Forgejo Actions: the BuildFlow gate, a secret scan, the
-  `STACK.md` drift check, the spec-count gate and a coverage floor of 80 %.
+- A CI workflow on Forgejo Actions, hermetic Nix: the race-enabled specs,
+  the flake checks (the package, lint, format, both modules, the wrapped
+  binary, the `STACK.md` drift, the secret scan), the spec-count gate and a
+  coverage floor of 80 %.
+- Flake checks for the `STACK.md` drift (`tests/stack-drift.nix`) and for
+  secrets in the tracked tree (`gitleaks`).
+- A bite-proof harness, `tests/negative/run.sh`: one contract break per
+  case, each must make its spec or check fail.
 - `modloc completion` for bash, zsh and fish, installed with the Nix
   package.

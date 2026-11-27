@@ -37,19 +37,20 @@ the two modloc status reports in nixos-modules (`docs/status/`, 06:05 and
 
 Ordered by impact; every row was open in the tree on 2026-11-27.
 
-- [ ] **First CI run.** `.forgejo/workflows/ci.yml` is new and no run has
-      been seen: confirm that the next push to `origin` starts a run on the
-      native runner and that it passes.
-- [ ] **Bite-proofs for the specs.** No mutation run proves that a spec can
-      fail. Cheap first targets: remove the recovery middleware in
-      `internal/cli/cli.go` (`wireRoot`; the panic spec must fail), change a
-      `values` tag on `Config` (`describe_test.go` must fail), reintroduce
-      the header-width bug in `internal/render/render.go`
-      (`alignNumbers`; the table spec must fail).
+- [ ] **First CI run.** `.forgejo/workflows/ci.yml` is hermetic Nix and its
+      commits are on `origin`; no run has been seen. Confirm on Forgejo that
+      the runs on the native runner pass.
+- [ ] **Bite-proof harness, one stale case.** `tests/negative/run.sh` has 14
+      cases; `cli/paths_checked_one_by_one` reports ANCHOR on 2026-11-27
+      (run with `KEEP=1` to read its log), and the two `SLOW=1` cases
+      (`package_without_the_scc_wrapper`, `package_without_its_version_stamp`)
+      have not been run.
+- [ ] **`rm -rf` in the harness.** `tests/negative/run.sh` removes its
+      scratch copy with `rm -rf`; the house rule is `trash`.
 - [ ] **The unreadable-subtree leg through the built binary.**
-      `internal/cli/binary_test.go` runs the binary with the real `scc` but
-      has no run over a directory the process cannot read; the notice is
-      only exercised in-process (`internal/cli/scan_test.go`).
+      `tests/package-runtime.sh` has a leg for a directory the user cannot
+      read that reports VACUOUS when the sandbox cannot provide one;
+      confirm whether it runs or skips inside `nix build`.
 - [ ] **Home Manager module against the real Home Manager.**
       `tests/modules.nix` evaluates `homeManagerModules.modloc` against a
       stub that declares `home.packages` only; Home Manager is not a flake

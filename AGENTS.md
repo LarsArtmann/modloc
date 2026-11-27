@@ -18,11 +18,9 @@ scope (SystemNix, `platforms/nixos/system/configuration.nix`, the entry for
 `modloc`), so a commit that adds a workflow file there is refused by GitHub
 and the mirror stalls.
 
-CI therefore lives in `.forgejo/workflows/ci.yml` (runner label `native`),
-never in `.github/workflows/`: the token of the mirror has no `workflow`
-scope (SystemNix, `platforms/nixos/system/configuration.nix`, the entry for
-`modloc`), so a commit that adds a workflow file there is refused by GitHub
-and the mirror stalls.
+CI is hermetic Nix (`nix develop`, `nix flake check`) and does not run
+BuildFlow: BuildFlow is private on GitHub and the runner has no token for
+it. Its full gate is the local loop before a push.
 
 ## Commands
 
@@ -31,7 +29,8 @@ go build ./...    # build
 go test ./...     # behavior specs (Ginkgo); specs needing scc skip without it
 buildflow         # the quality gate: lint, format, tests, repairs
 nix build         # hermetic build; the package wraps scc onto its PATH
-nix flake check   # package, specs with the real scc, both Nix modules, format; x86_64-linux only
+nix flake check   # package, specs with the real scc, both Nix modules, STACK.md
+                  # drift, secrets, the wrapped binary, format; x86_64-linux only
                   # (add --all-systems --no-build to evaluate aarch64-linux)
 nix run . -- -l rust ~/projects/collector-utils
 ```
@@ -42,7 +41,10 @@ silently builds without it.
 
 The repo gates BuildFlow does not own: `bash scripts/test-count.sh` (the
 spec count in `FEATURES.md`), `bash scripts/coverage-floor.sh` (80 %) and
-`stack-selection/scripts/stack-drift-check.sh .`. CI runs all three.
+`bash tests/negative/run.sh`, the bite-proof: every case breaks one contract
+in a copy of the tree and requires the matching spec or check to fail
+(`SLOW=1` adds the cases that build the package, `KEEP=1` keeps the logs).
+CI runs the first two; the harness is local only.
 
 ## Architecture map
 
@@ -97,6 +99,11 @@ BuildFlow's rule is fixed, filed, or recorded; these are recorded.
 - **go-auto-upgrade (suggestions: `samber/lo`).** The loops are three to
   five lines each, two sit in test helpers; a new dependency with its own
   graph is not worth them (see `STACK.md`).
+- **branching-flow (4 mixin suggestions, 1 index warning).** `File`,
+  `Module` and `Totals` share their count fields on purpose and stay
+  separate types: a total has no path and must never pass for a row
+  (`internal/loc/model.go`). The index warning is on `headerWidths`, where
+  the index comes from a range over the array it indexes.
 - **library-policy (1: cobra, "USE charm.land/fang/v2 with cobra").** Every
   help and error screen is fang's: cmdguard renders through fang by
   default. The direct cobra import exists for the two lines of the root
@@ -108,6 +115,11 @@ BuildFlow's rule is fixed, filed, or recorded; these are recorded.
 - **golangci-lint-auto-configure (1: "gohumanize is recommended, not in
   golangci-lint v2.15.0").** BuildFlow runs it as its own step,
   `go-humanize-linter`; it passes.
+- **nix-checker and nix-flake-check (warnings about the flake).**
+  `vendorHash` is passed inline to the `go-standard` block, where that
+  module expects it. `nix flake check` warns about `homeManagerModules`
+  because Home Manager is not an input of this flake: `tests/modules.nix`
+  evaluates the module against a stub.
 
 ## Gotchas
 
