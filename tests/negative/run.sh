@@ -58,8 +58,9 @@ make_copy() {
 }
 
 # mutate replaces old with new in file, exactly once, inside a copy. It never
-# touches the repository itself. Any other count is a harness problem (the
-# anchor went stale), never a verdict about the specs.
+# touches the repository itself. <DELETE> as new removes old. Any other
+# count is a harness problem (the anchor went stale), never a verdict about
+# the specs.
 mutate() { # mutate <file> <old> <new>
 	case $PWD/ in
 	"$WORK"/*) ;;
@@ -73,6 +74,7 @@ mutate() { # mutate <file> <old> <new>
 import sys
 
 path, old, new = sys.argv[1:4]
+new = "" if new == "<DELETE>" else new
 text = open(path, encoding="utf-8").read()
 found = text.count(old)
 if found != 1:
@@ -91,7 +93,8 @@ as_flake() {
 # breaks describes a case: the group it belongs to, the suite that must
 # catch it (go: a package; nix-eval: a check that fails the evaluation;
 # nix-build: a check whose build must fail), the marker the failure must
-# carry, and the mutations (file, old, new) that break the contract.
+# carry (one string per line, each must appear), and the mutations (file, old,
+# new) that break the contract.
 breaks() {
 	GROUP=$1
 	KIND=$2
@@ -126,14 +129,14 @@ case_paths_checked_one_by_one() {
 		'checks every path before it scans any of them' \
 		internal/cli/scan.go \
 		$'\terr = validateRepositories(repos)\n\tif err != nil {\n\t\treturn err\n\t}\n' \
-		'' \
+		'<DELETE>' \
 		$'\tfor _, repo := range repos {\n\t\treport, scanErr :=' \
 		$'\tfor _, repo := range repos {\n\t\tif err := validateRepositories([]string{repo}); err != nil {\n\t\t\treturn err\n\t\t}\n\n\t\treport, scanErr :='
 }
 
 case_column_width_ignores_the_header() {
 	breaks render go internal/render \
-		'writes a table with grouped, right-aligned numbers that ends in a TOTAL row' \
+		'draws a bordered table with right-aligned numbers and a TOTAL footer' \
 		internal/render/render.go \
 		'widest := width' \
 		'widest := width * 0'
@@ -149,7 +152,7 @@ case_nested_modules_count_toward_their_parent() {
 
 case_node_modules_becomes_a_module() {
 	breaks loc go internal/loc \
-		'does not descend into node_modules' \
+		$'does not descend into\n[It] node_modules' \
 		internal/loc/markers.go \
 		'case "vendor", "target", "node_modules", ".git":' \
 		'case "vendor", "target", ".git":'
@@ -220,7 +223,7 @@ case_package_without_its_version_stamp() {
 		'modloc package check failed' \
 		flake.nix \
 		$'\t\t\t"-X main.version=${version}"\n' \
-		''
+		'<DELETE>'
 }
 
 # ---------------------------------------------------------------------------
@@ -238,6 +241,14 @@ apply() { # apply <dir>
 	)
 }
 
+# carries reports whether the log holds every line of the marker.
+carries() { # carries <marker> <log>
+	local line
+	while IFS= read -r line; do
+		grep -qF -- "$line" "$2" || return 1
+	done <<<"$1"
+}
+
 # judged runs one command in the copy and classifies its outcome.
 judged() { # judged <dir> <label> <log> <cmd...>
 	local dir=$1 label=$2 log=$3
@@ -251,7 +262,7 @@ judged() { # judged <dir> <label> <log> <cmd...>
 		verdict ANCHOR
 	elif grep -q '\[build failed\]\|\[setup failed\]' "$log"; then
 		verdict COMPILE
-	elif grep -qF "$MARKER" "$log"; then
+	elif carries "$MARKER" "$log"; then
 		verdict BIT
 	else
 		verdict OTHER_FAILURE
