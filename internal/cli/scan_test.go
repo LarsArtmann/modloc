@@ -86,6 +86,25 @@ var _ = Describe("modloc", func() {
 				Expect(modloc.errors.String()).To(ContainSubstring("Not a directory: " + file))
 			})
 
+			It("exits 1, prints no table, and names a path it is not allowed to look up", func() {
+				locked := filepath.Join(GinkgoT().TempDir(), "locked")
+				write(filepath.Join(locked, "child", "keep"), "")
+
+				Expect(os.Chmod(locked, 0o000)).To(Succeed())
+				DeferCleanup(func() { _ = os.Chmod(locked, 0o700) })
+
+				if _, err := os.ReadDir(locked); err == nil {
+					Skip("VACUOUS: this process reads a mode-000 directory (running as root)")
+				}
+
+				hidden := filepath.Join(locked, "child")
+
+				Expect(modloc.run(modloc.root, hidden)).To(Equal(1))
+				Expect(modloc.report.String()).To(BeEmpty())
+				Expect(modloc.counter.asked).To(BeEmpty())
+				Expect(modloc.errors.String()).To(ContainSubstring("Cannot read " + hidden))
+			})
+
 			It("checks every path before it scans any of them", func() {
 				Expect(modloc.run(modloc.root, "/no/such/dir")).To(Equal(1))
 				Expect(modloc.counter.asked).To(BeEmpty())

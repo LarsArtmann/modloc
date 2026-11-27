@@ -24,6 +24,10 @@ fail() {
 	exit 1
 }
 
+# Any other failing command leaves the same marker, so a broken package can
+# never fail this check without saying so.
+trap 'echo "modloc package check failed: a command exited non-zero (see the lines above)" >&2' ERR
+
 # empty runs modloc with no environment at all: whatever it needs must be its own.
 empty() {
 	env -i "$modloc" "$@"
