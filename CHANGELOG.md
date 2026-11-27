@@ -26,7 +26,7 @@ Semantic Versioning.
 - A Nix flake: the package wraps `scc` onto its `PATH`;
   `nixosModules.modloc` and `homeManagerModules.modloc`
   (`programs.modloc.enable`); eval and runtime checks.
-- 156 behavior specs (Ginkgo) over 94.2 % of the statements.
+- 157 behavior specs (Ginkgo) over 94.4 % of the statements.
 - Notices on stderr, never on stdout: an empty scan names the command that
   finds the other language, and every directory that could not be read is
   named while the rest of the repository is still counted.

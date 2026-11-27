@@ -19,8 +19,9 @@ $ cd ~/projects/collector-utils && modloc -l rust
 ╰───────┴───────────┴───────┴───────┴─────────┴───────┴────────╯
 ```
 
-The root module `.` holds the 22 Rust files outside every crate; `fuzz` is a
-nested module, so its 7 files count toward `fuzz` alone.
+The root module `.` holds the 22 Rust files whose nearest marker is the root
+`Cargo.toml`; `fuzz` is a nested module, so its 7 files count toward `fuzz`
+alone.
 
 ## Quick start
 

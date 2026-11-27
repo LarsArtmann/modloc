@@ -5,7 +5,7 @@ progress, `[x]` done. Done rows are deleted on sight: completed work lives
 in `CHANGELOG.md`. A row whose fix lands in another repository carries
 `(repo: <name>)`.
 
-**Created:** 2026-11-26 · Crush (glm-5.4) docs-health audit · backlog basis:
+**Created:** 2026-11-27 · Crush (glm-5.4) docs-health audit · backlog basis:
 the two modloc status reports in nixos-modules (`docs/status/`, 06:05 and
 17:53), each item verified against the tree before it was kept.
 
@@ -35,7 +35,7 @@ the two modloc status reports in nixos-modules (`docs/status/`, 06:05 and
 
 ## Work
 
-Ordered by impact; every row was open in the tree on 2026-11-26.
+Ordered by impact; every row was open in the tree on 2026-11-27.
 
 - [ ] **First CI run.** `.forgejo/workflows/ci.yml` is new and no run has
       been seen: confirm that the next push to `origin` starts a run on the
@@ -57,7 +57,7 @@ Ordered by impact; every row was open in the tree on 2026-11-26.
 - [ ] **Review `.golangci.yml` setting by setting.** The file is inherited
       from google-domain-detector (funlen, gosec excludes, `varnamelen`,
       `tagalign`); lint passes, the fit for modloc was never checked.
-- [ ] **`internal/cli` coverage gap.** 87.7 %; the uncovered lines are the
+- [ ] **`internal/cli` coverage gap.** 88.7 %; the uncovered lines are the
       construction-error branch of `Run` (`internal/cli/cli.go`). Cover it
       or record why not.
 - [ ] **Coverage floor in the verdict.** `scripts/coverage-floor.sh` runs

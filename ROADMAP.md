@@ -4,7 +4,7 @@ Long-term direction and raw ideas that are not refined into tasks. Actionable
 short-term work lives in [TODO_LIST](TODO_LIST.md), the feature inventory in
 [FEATURES](FEATURES.md).
 
-**Last refreshed:** 2026-11-26 · Crush (glm-5.4) docs-health audit · basis:
+**Last refreshed:** 2026-11-27 · Crush (glm-5.4) docs-health audit · basis:
 the bash roadmap re-homed from nixos-modules, minus what has shipped or
 become a task.
 

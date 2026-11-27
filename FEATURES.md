@@ -5,11 +5,11 @@ code; every row says where it lives and what proves it. There is no
 BROKEN, PARTIALLY_FUNCTIONAL or DISABLED row: every shipped feature passed
 its specs and its Nix checks when this list was refreshed.
 
-**Last refreshed:** 2026-11-26 · Crush (glm-5.4) docs-health audit · basis:
+**Last refreshed:** 2026-11-27 · Crush (glm-5.4) docs-health audit · basis:
 `go test ./...` with coverage, `nix flake check`, and the built binary run in
 every format.
 
-Test count: 156 specs (Ginkgo, black-box), covering 94.2 % of the
+Test count: 157 specs (Ginkgo, black-box), covering 94.4 % of the
 statements. `bash scripts/test-count.sh` checks the first number.
 
 ## FULLY_FUNCTIONAL
@@ -46,7 +46,7 @@ statements. `bash scripts/test-count.sh` checks the first number.
 - Notices on stderr, never on stdout: an empty scan (with the command that
   finds the other language) and unreadable directories.
 - A crash inside the counter is reported as a failure, not a stack trace.
-- `internal/cli` (63 specs, 87.7 %), including specs that build the binary
+- `internal/cli` (64 specs, 88.7 %), including specs that build the binary
   and run it as a process with the real `scc`.
 
 ### Output
