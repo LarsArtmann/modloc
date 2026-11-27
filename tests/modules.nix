@@ -1,7 +1,9 @@
 # Eval checks for the NixOS and the Home Manager module, one pair per
 # system. Each check evaluates the module enabled and disabled: enabled must
-# install exactly this flake's package, disabled must install nothing. An
-# option branch that is never evaluated is untested code.
+# install this flake's package exactly once, disabled must not install it. The
+# host adds its own packages to the same list (NixOS its system tools), so
+# the list is searched for the package, never compared whole. An option
+# branch that is never evaluated is untested code.
 {
   system,
   nixpkgs,
@@ -48,7 +50,9 @@ let
     let
       enabled = packages true;
       disabled = packages false;
-      ok = enabled == [ pkg ] && disabled == [ ];
+      # How often the package is in a list.
+      installed = packages: lib.length (lib.filter (installed: installed == pkg) packages);
+      ok = installed enabled == 1 && installed disabled == 0;
     in
     pkgs.runCommand "modloc-${name}-check" { } ''
       echo "enabled installs:  ${builtins.toJSON (map toString enabled)}" >&2
