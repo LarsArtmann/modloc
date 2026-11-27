@@ -38,6 +38,7 @@ a program as a **data format**.
 | Contract           | The machine-readable description of the command line (`modloc describe`): every flag, its default, its allowed values and every command. Golden-pinned            |
 | Usage error        | A command line modloc cannot act on: a wrong value, an unknown flag, a missing value. Exits `2` before anything is scanned                                        |
 | Stamp              | What a build knows about itself: the version and the commit `--version` prints                                                                                    |
+| Doctor              | The command that names the counter before a scan: the path of the `scc` that will run and its version line, or the reason none can (missing, failing)                        |
 | VACUOUS            | A spec that cannot decide in this sandbox (a directory the process can read anyway, no `scc` installed) and skips, naming the reason, instead of passing silently |
 
 ## Bound to one side
@@ -45,5 +46,6 @@ a program as a **data format**.
 | Context               | Term that shifts meaning                                                                                  |
 | --------------------- | --------------------------------------------------------------------------------------------------------- |
 | count vs report       | `scc` counts files; modloc attributes them. A file's numbers are `scc`'s, a module's numbers are modloc's |
-| terminal vs pipe      | The same command is a picture on a terminal and data in a pipe (`auto`), never a mixture                  |
 | before vs after print | Every path is validated before the header is printed; a counter failure after that is exit `1`            |
+| terminal vs pipe        | The same command is a picture on a terminal and data in a pipe (`auto`), never a mixture                  |
+| module vs repository    | A nested module's files belong to that module alone; the enclosing module's row does not contain them    |

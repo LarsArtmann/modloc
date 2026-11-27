@@ -1,8 +1,13 @@
 # Features
 
 Honest inventory of what modloc does, by status. The source of truth is the
-code; every row says where it lives and what proves it.
-Last refreshed: 2026-11-26.
+code; every row says where it lives and what proves it. There is no
+BROKEN, PARTIALLY_FUNCTIONAL or DISABLED row: every shipped feature passed
+its specs and its Nix checks when this list was refreshed.
+
+**Last refreshed:** 2026-11-26 · Crush (glm-5.4) docs-health audit · basis:
+`go test ./...` with coverage, `nix flake check`, and the built binary run in
+every format.
 
 Test count: 156 specs (Ginkgo, black-box), covering 94.2 % of the
 statements. `bash scripts/test-count.sh` checks the first number.
@@ -34,9 +39,10 @@ statements. `bash scripts/test-count.sh` checks the first number.
   before anything is scanned.
 - Every path is checked before anything is printed: a missing path or a file
   exits `1` and is named.
-- `--help` on stdout; `--version` with the commit; `doctor` naming the `scc`
-  that will run; shell completion; the hidden machine-readable `describe`
-  contract, golden-pinned.
+- `--help` on stdout; `--version` and the `version` command with the commit;
+  `doctor` naming the `scc` that will run; `completion` for bash, zsh and
+  fish; `--no-color`; the hidden machine-readable `describe` contract,
+  golden-pinned.
 - Notices on stderr, never on stdout: an empty scan (with the command that
   finds the other language) and unreadable directories.
 - A crash inside the counter is reported as a failure, not a stack trace.
@@ -59,13 +65,15 @@ statements. `bash scripts/test-count.sh` checks the first number.
 - `nixosModules.modloc` and `homeManagerModules.modloc`, both
   `programs.modloc.enable` with `package` defaulting to this flake's build.
 - Checks: the package build runs the specs with the real `scc`;
-  `package-runtime` runs the wrapped binary with an empty environment;
-  module checks evaluate both modules enabled and disabled, on
-  `x86_64-linux` and `aarch64-linux`.
+  `package-runtime` runs the wrapped binary with an empty environment and
+  asserts its three completion files (`modloc.bash`, `_modloc`,
+  `modloc.fish`); the module checks evaluate both modules enabled and
+  disabled (`tests/modules.nix`): the package is on the list exactly once
+  when enabled and absent when disabled.
 
 ## DEMAND_GATED
 
-- More languages (Python, TypeScript): the attribution is language-agnostic,
+- More languages (Python, TypeScript): the attribution is language-agnostic;
   a language needs a marker, an extension and two spec fixtures.
 - `-l all` in one pass, `--sort`, `--top N`, `--exclude-dir`, a fleet sweep:
   ideas in [ROADMAP](ROADMAP.md), none requested yet.

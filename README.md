@@ -10,10 +10,17 @@ a nested module never count toward the module that encloses it.
 
 ```console
 $ cd ~/projects/collector-utils && modloc -l rust
-repo  module  files  code  comment  blank  lines
-.     .         22  6841     3010    904  10755
-.     fuzz       7   282       77     44    403
+╭───────┬───────────┬───────┬───────┬─────────┬───────┬────────╮
+│ repo  │ module    │ files │ code  │ comment │ blank │ lines  │
+├───────┼───────────┼───────┼───────┼─────────┼───────┼────────┤
+│ .     │ .         │    22 │ 6,841 │   3,010 │   904 │ 10,755 │
+│ .     │ fuzz      │     7 │   282 │      77 │    44 │    403 │
+│ TOTAL │ 2 modules │    29 │ 7,123 │   3,087 │   948 │ 11,158 │
+╰───────┴───────────┴───────┴───────┴─────────┴───────┴────────╯
 ```
+
+The root module `.` holds the 22 Rust files outside every crate; `fuzz` is a
+nested module, so its 7 files count toward `fuzz` alone.
 
 ## Quick start
 
@@ -72,7 +79,15 @@ $ modloc --help
 redirected, so `modloc > file` gives data and `modloc` gives a picture.
 
 `modloc doctor` names the `scc` binary that will run. `modloc --version`
-prints the version and the commit it was built from.
+prints the version and the commit it was built from, `modloc completion
+bash` (or `zsh`, `fish`) prints the shell completion script.
+
+| Command      | Does                                              |
+| ------------ | ------------------------------------------------- |
+| `modloc`     | count the paths given, or the current directory   |
+| `doctor`     | name the `scc` that will run, or say why none can |
+| `version`    | the same as `--version`                           |
+| `completion` | print the completion script for bash, zsh or fish |
 
 | Exit code | Meaning                                     |
 | --------- | ------------------------------------------- |

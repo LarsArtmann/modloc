@@ -2,7 +2,12 @@
 
 Short- and mid-term work for modloc. Status markers: `[ ]` open, `[~]` in
 progress, `[x]` done. Done rows are deleted on sight: completed work lives
-in `CHANGELOG.md`.
+in `CHANGELOG.md`. A row whose fix lands in another repository carries
+`(repo: <name>)`.
+
+**Created:** 2026-11-26 · Crush (glm-5.4) docs-health audit · backlog basis:
+the two modloc status reports in nixos-modules (`docs/status/`, 06:05 and
+17:53), each item verified against the tree before it was kept.
 
 ## Owner decisions
 
@@ -12,23 +17,49 @@ in `CHANGELOG.md`.
 - [ ] **Cut `v0.1.0`** (go-release skill): annotated tag, link references in
       `CHANGELOG.md`, then `go install github.com/larsartmann/modloc/cmd/modloc@latest`
       works.
-- [ ] **SystemNix cutover.** Add the `modloc` flake input next to
-      `nixos-modules`, lock it (`nix flake update modloc`, plus a `follows`
-      line for every sub-input the lock audit rejects), switch
-      `systems/evo-x2.nix` from `inputs.nixos-modules.nixosModules.modloc`
-      to `inputs.modloc.nixosModules.modloc` (`programs.modloc.enable =
-      true;` stays), deploy, and prove `modloc --version` on the host. The
-      ordered steps are in the nixos-modules repository:
+- [ ] **SystemNix cutover** (repo: SystemNix). `systems/evo-x2.nix` still
+      imports `inputs.nixos-modules.nixosModules.modloc`. Add the `modloc`
+      flake input, lock it (`nix flake update modloc`, plus a `follows`
+      line for every sub-input the lock audit rejects), switch to
+      `inputs.modloc.nixosModules.modloc` (`programs.modloc.enable = true;`
+      stays), deploy, and prove `modloc --version` on the host. The ordered
+      steps are in the nixos-modules repository:
       `modules/modloc/README.md`, "Successor and cutover".
-- [ ] **Retire the bash module** in nixos-modules once the cutover is live
-      (same runbook, step 2 and 3). Retiring it first turns every
+- [ ] **Retire the bash module** (repo: nixos-modules) once the cutover is
+      live (same runbook, steps 2 and 3). Retiring it first turns every
       consumer's evaluation red.
+- [ ] **Dependabot on the mirror.** `.github/dependabot.yml` opens its
+      update pull requests on GitHub, which is a push mirror of Forgejo: a
+      merge there is overwritten by the next sync. Delete the file, or
+      accept that it only produces pull requests nobody can land.
 
 ## Work
 
-- [ ] **First CI run.** `.forgejo/workflows/ci.yml` is new: confirm that the
-      next push to `origin` starts a run on the native runner and that the
-      run is green.
+Ordered by impact; every row was open in the tree on 2026-11-26.
+
+- [ ] **First CI run.** `.forgejo/workflows/ci.yml` is new and no run has
+      been seen: confirm that the next push to `origin` starts a run on the
+      native runner and that it passes.
+- [ ] **Bite-proofs for the specs.** No mutation run proves that a spec can
+      fail. Cheap first targets: remove the recovery middleware in
+      `internal/cli/cli.go` (`wireRoot`; the panic spec must fail), change a
+      `values` tag on `Config` (`describe_test.go` must fail), reintroduce
+      the header-width bug in `internal/render/render.go`
+      (`alignNumbers`; the table spec must fail).
+- [ ] **The unreadable-subtree leg through the built binary.**
+      `internal/cli/binary_test.go` runs the binary with the real `scc` but
+      has no run over a directory the process cannot read; the notice is
+      only exercised in-process (`internal/cli/scan_test.go`).
+- [ ] **Home Manager module against the real Home Manager.**
+      `tests/modules.nix` evaluates `homeManagerModules.modloc` against a
+      stub that declares `home.packages` only; Home Manager is not a flake
+      input.
+- [ ] **Review `.golangci.yml` setting by setting.** The file is inherited
+      from google-domain-detector (funlen, gosec excludes, `varnamelen`,
+      `tagalign`); lint passes, the fit for modloc was never checked.
+- [ ] **`internal/cli` coverage gap.** 87.7 %; the uncovered lines are the
+      construction-error branch of `Run` (`internal/cli/cli.go`). Cover it
+      or record why not.
 - [ ] **Coverage floor in the verdict.** `scripts/coverage-floor.sh` runs
       in CI only; wire it into BuildFlow once it can run repo scripts, so
       the local verdict carries it too.
@@ -39,3 +70,28 @@ in `CHANGELOG.md`.
 - [ ] **README sample.** Once `v0.1.0` exists, show a versioned install
       (`nix run github:LarsArtmann/modloc/v0.1.0`); today the example
       tracks `master`.
+
+## File upstream
+
+Workarounds live in `AGENTS.md`; the causes belong in the libraries. Each
+row was verified in modloc's tree; none is in the other repository's
+`TODO_LIST.md`. Run the verify-before-filing and github-voice skills first.
+
+- [ ] (repo: cmdguard) A root command that runs itself bypasses the
+      middleware chain: `WithMiddleware` does not reach `RootCommand().RunE`.
+- [ ] (repo: cmdguard) Help hides the allowed values of a `string` flag with
+      a `values` tag, while the enum error's hint points at that help.
+- [ ] (repo: cmdguard) Unknown-flag and missing-value errors leave
+      `ExecuteWithArgs` without a sentinel, so consumers exit 1 for a usage
+      error unless they install a `FlagErrorFunc`.
+- [ ] (repo: cmdguard) `testutil.AssertDescribeContract` is not in the
+      published v5.1.0 module, while the cmdguard skill tells consumers it
+      is.
+- [ ] (repo: BuildFlow) The result cache replays a finding whose cause is
+      fixed (`securitymd`), and `buildflow --fix` runs the dependency update.
+- [ ] (repo: go-output) The Markdown table separator row is one character
+      narrower than its columns.
+- [ ] (repo: crush-config) Add the lessons to `references/lessons.md`: the
+      auto-commit daemon's hook reformats between read and write; a spec
+      that depends on an external tool's order is flaky; a root command
+      outside the middleware chain.

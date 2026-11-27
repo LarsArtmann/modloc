@@ -4,6 +4,10 @@ Long-term direction and raw ideas that are not refined into tasks. Actionable
 short-term work lives in [TODO_LIST](TODO_LIST.md), the feature inventory in
 [FEATURES](FEATURES.md).
 
+**Last refreshed:** 2026-11-26 · Crush (glm-5.4) docs-health audit · basis:
+the bash roadmap re-homed from nixos-modules, minus what has shipped or
+become a task.
+
 ## Direction
 
 1. **Stay boring.** One job (lines per logical module), one engine (`scc`),
@@ -32,5 +36,10 @@ short-term work lives in [TODO_LIST](TODO_LIST.md), the feature inventory in
   bash script; modloc no longer depends on it.
 - **A project website** (website-launch skill): a landing page with the
   table and the formats. Not needed for the first release.
-- **A release flow** (go-release skill): CHANGELOG cut, annotated tag,
-  `pkg.go.dev` check. Becomes concrete with `v0.1.0`.
+
+## Open questions
+
+- **Does the bash module stay one release as a fallback** after the SystemNix
+cutover, or is it retired in the same cycle? (nixos-modules,
+  `modules/modloc/README.md`, "Successor and cutover".)
+- **When does SystemNix switch:** now, or once `v0.1.0` is tagged?
