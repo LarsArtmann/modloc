@@ -36,12 +36,35 @@
       # named by its short commit; a working tree is "dev" plus that commit.
       version = self.shortRev or "dev";
       commit = self.dirtyShortRev or "";
-      moduleChecks =
+      # The checks over the whole repository, one set per system.
+      repositoryChecks =
         system:
-        import ./tests/modules.nix {
+        (import ./tests/modules.nix {
           inherit system;
           inherit (inputs) nixpkgs;
           flake = self;
+        })
+        // {
+          # STACK.md must name every first-party module that go.mod requires.
+          stack-drift = import ./tests/stack-drift.nix {
+            inherit (nixpkgs) lib;
+            pkgs = nixpkgs.legacyPackages.${system};
+            goMod = ./go.mod;
+            stack = ./STACK.md;
+          };
+
+          # Both remotes are public and a daemon commits whatever lies around,
+          # so every tracked file is scanned for secrets. --no-git: the store
+          # copy carries no history.
+          secrets = nixpkgs.legacyPackages.${system}.runCommand "modloc-secrets-check" {
+            nativeBuildInputs = [ nixpkgs.legacyPackages.${system}.gitleaks ];
+          } ''
+            gitleaks detect --no-git --source ${packageSrc} --redact --no-banner >gitleaks.log 2>&1 && touch $out || {
+              cat gitleaks.log >&2
+              echo "modloc secrets check failed: gitleaks found a secret in the source tree" >&2
+              exit 1
+            }
+          '';
         };
     in
     flake-parts.lib.mkFlake { inherit inputs; } {
@@ -93,7 +116,7 @@
         checks = builtins.listToAttrs (
           map (system: {
             name = system;
-            value = moduleChecks system;
+            value = repositoryChecks system;
           }) systems
         );
       };
@@ -104,35 +127,11 @@
           # Runs the package the way a host does. This derivation has no scc,
           # so counting works only through the wrapper the package carries.
           checks.package-runtime = nixpkgs.legacyPackages.${system}.runCommand "modloc-package-runtime" { } ''
-            fixture=$PWD/repo
-            mkdir -p $fixture/internal/x $fixture/internal/y/deep
-            printf '%s\n' 'module example.com/root' > $fixture/go.mod
-            printf '%s\n' 'package main' > $fixture/main.go
-            printf '%s\n' 'package x' 'func X() {}' > $fixture/internal/x/x.go
-            printf '%s\n' 'module example.com/root/y' > $fixture/internal/y/go.mod
-            printf '%s\n' 'package y' > $fixture/internal/y/y.go
-            printf '%s\n' 'package d' > $fixture/internal/y/deep/d.go
-
-            modloc=${self'.packages.default}/bin/modloc
-
-            # An empty environment: whatever modloc needs must be its own.
-            env -i $modloc repo > go.tsv
-            printf 'repo\tmodule\tfiles\tcode\tcomment\tblank\tlines\n' > expected
-            printf 'repo\t.\t2\t3\t0\t0\t3\nrepo\tinternal/y\t2\t2\t0\t0\t2\n' >> expected
-            diff -u expected go.tsv
-
-            env -i $modloc doctor | grep -F 'scc  ok'
-            env -i $modloc --version | grep -F 'modloc version'
-            env -i $modloc --bogus 2> usage.err || test "$?" = 2
-            grep -F 'unknown flag: --bogus' usage.err
-
-            for completion in bash-completion/completions/modloc.bash fish/vendor_completions.d/modloc.fish zsh/site-functions/_modloc; do
-              test -f "${self'.packages.default}/share/$completion" || {
-                echo "modloc package check: missing completion $completion" >&2
-                exit 1
-              }
-            done
-
+            bash ${./tests/package-runtime.sh} ${lib.escapeShellArgs [
+              self'.packages.default
+              version
+              commit
+            ]}
             touch $out
           '';
         };
